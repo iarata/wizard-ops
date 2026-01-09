@@ -56,9 +56,9 @@ class NutritionDataset(L.LightningDataModule):
         raw_path = self.data_path
 
         # minimal setup: instantiate dataset placeholders (user can replace with real logic)
-        self.train_dataset = MyDataset(raw_path / "train")
-        self.val_dataset = MyDataset(raw_path / "val")
-        self.test_dataset = MyDataset(raw_path / "test")
+        self.train_dataset = Nutrition(raw_path / "train")
+        self.val_dataset = Nutrition(raw_path / "val")
+        self.test_dataset = Nutrition(raw_path / "test")
 
     def train_dataloader(self):
         """Return the training dataloader."""
