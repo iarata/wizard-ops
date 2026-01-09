@@ -1,6 +1,5 @@
 import torch
-from torch import nn, optim
-from pytorch_lightning import LightningModule
+from torch import nn
 import torchvision.models as models
 
 
