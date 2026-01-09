@@ -32,7 +32,7 @@ dependencies = [
     "scipy>=1.16.3",
     "torch==2.6.0",
     "typer>=0.21.1",
-    "uvicorn==0.34.0",
+    "uvicorn==0.40.0",
     "wandb>=0.23.1",
 ]
 
