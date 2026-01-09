@@ -1,0 +1,6 @@
+outs:
+- md5: 89a28739df0aa22fc2681fe67159597f.dir
+  size: 6431138386
+  nfiles: 54848
+  hash: md5
+  path: data.nosync
