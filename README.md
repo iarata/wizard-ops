@@ -7,7 +7,7 @@ The overall goal of the project is to train a model that can predict the nutriti
 
 The model is trained on a subset of the Nutrition5k dataset (https://github.com/google-research-datasets/Nutrition5k?tab=readme-ov-file) containing side angle images (https://www.kaggle.com/datasets/zygmuntyt/nutrition5k-dataset-side-angle-images/data). The kaggle dataset contrains 16 samples per plate of food. We will use one of these angles per plate. Our dataset contains a single image of 5000 different dishes and metadata for each dish corresponding XX of data. The images are (format), and the metadata containing the total calories, mass, fat, carb and protein.
 
-We intend to train a model based on xxxx.
+The model is based on the ResNet18 architecture.
 
 
 # Exam template for 02476 Machine Learning Operations
