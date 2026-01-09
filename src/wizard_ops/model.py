@@ -31,11 +31,12 @@ class NutritionPredictor(LightningModule):
 
         preds = self.forward(img)
         loss = self.criterion(preds,nutrition)
+        self.log("loss", loss.item(), prog_bar=True)
     
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=1e-2)
     
-    
+
         
 
 if __name__ == "__main__":

@@ -31,7 +31,7 @@ def main() -> None:
     # print(nutrition[0])
 
     model = NutritionPredictor()
-    trainer = Trainer(accelerator='mps', fast_dev_run=True, max_epochs=10)
+    trainer = Trainer(accelerator='mps', max_epochs=5)
     trainer.fit(model, datamodule=dataset)
 
 
