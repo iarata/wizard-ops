@@ -132,20 +132,13 @@ will check the repositories and the code to verify your answers.
 ### Question 1
 > **Enter the group number you signed up on <learn.inside.dtu.dk>**
 >
-> Answer:
+> Answer: Team 33
 
---- question 1 fill here ---
 
 ### Question 2
 > **Enter the study number for each member in the group**
 >
-> Example:
->
-> *sXXXXXX, sXXXXXX, sXXXXXX*
->
-> Answer:
-
---- question 2 fill here ---
+> Answer: s253471, s253033, s253081, s223190, alihaj
 
 ### Question 3
 > **A requirement to the project is that you include a third-party package not covered in the course. What framework**
@@ -157,9 +150,8 @@ will check the repositories and the code to verify your answers.
 > *We used the third-party framework ... in our project. We used functionality ... and functionality ... from the*
 > *package to do ... and ... in our project*.
 >
-> Answer:
+> Answer: The library we've used in our project is Albumations (https://pypi.org/project/albumentations/). 
 
---- question 3 fill here ---
 
 ## Coding environment
 
