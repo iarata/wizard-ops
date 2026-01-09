@@ -1,3 +1,15 @@
+# Project description
+a) Overall goal
+b) what data are we going to run on. Describe number of samples, size, modality.
+c) What models do you expect to use
+
+The overall goal of the project is to train a model that can predict the nutritional value of a plate of food based on an image of the plate. 
+
+The model is trained on a subset of the Nutrition5k dataset (https://github.com/google-research-datasets/Nutrition5k?tab=readme-ov-file) containing side angle images (https://www.kaggle.com/datasets/zygmuntyt/nutrition5k-dataset-side-angle-images/data). The kaggle dataset contrains 16 samples per plate of food. We will use one of these angles per plate. Our dataset contains a single image of 5000 different dishes and metadata for each dish corresponding XX of data. The images are (format), and the metadata containing the total calories, mass, fat, carb and protein.
+
+We intend to train a model based on xxxx.
+
+
 # Exam template for 02476 Machine Learning Operations
 
 This is the report template for the exam. Please only remove the text formatted as with three dashes in front and behind
@@ -52,15 +64,15 @@ will check the repositories and the code to verify your answers.
 
 ### Week 1
 
-* [ ] Create a git repository (M5)
-* [ ] Make sure that all team members have write access to the GitHub repository (M5)
-* [ ] Create a dedicated environment for you project to keep track of your packages (M2)
-* [ ] Create the initial file structure using cookiecutter with an appropriate template (M6)
+* [ x ] Create a git repository (M5)
+* [ x ] Make sure that all team members have write access to the GitHub repository (M5)
+* [ x ] Create a dedicated environment for you project to keep track of your packages (M2)
+* [ x ] Create the initial file structure using cookiecutter with an appropriate template (M6)
 * [ ] Fill out the `data.py` file such that it downloads whatever data you need and preprocesses it (if necessary) (M6)
 * [ ] Add a model to `model.py` and a training procedure to `train.py` and get that running (M6)
 * [ ] Remember to fill out the `requirements.txt` and `requirements_dev.txt` file with whatever dependencies that you
     are using (M2+M6)
-* [ ] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
+* [ x ] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
 * [ ] Do a bit of code typing and remember to document essential parts of your code (M7)
 * [ ] Setup version control for your data or part of your data (M8)
 * [ ] Add command line interfaces and project commands to your code where it makes sense (M9)

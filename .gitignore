@@ -146,6 +146,7 @@ env.bak/
 venv.bak/
 .venv.nosync
 uv.lock
+.toml
 
 # Spyder project settings
 .spyderproject
