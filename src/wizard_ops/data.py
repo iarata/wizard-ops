@@ -122,10 +122,13 @@ class Nutrition(Dataset):
         
         for dish_id in dish_folders:
             if dish_id in metadata_dishes:
-                # Check if images exist
+                # Check if images exist for the specified camera
                 frames_dir = self.data_path / dish_id / "frames_sampled30"
                 if frames_dir.exists():
-                    valid_dishes.append(dish_id)
+                    # Check if at least one image exists for this camera
+                    matches = list(frames_dir.glob(f"camera_{self.camera}_frame_*.jp*g"))
+                    if matches:
+                        valid_dishes.append(dish_id)
         
         return sorted(valid_dishes)
 
@@ -194,16 +197,24 @@ class Nutrition(Dataset):
         # Construct image filename
         image_name = f"camera_{self.camera}_frame_{self.frame_idx:03d}.jpeg"
         image_path = frames_dir / image_name
-        
-        if not image_path.exists():
-            # Try alternate extension
-            image_path = frames_dir / image_name.replace(".jpeg", ".jpg")
-        
-        if not image_path.exists():
-            raise FileNotFoundError(f"Image not found: {image_path}")
-        
+
+        # Try the requested frame first (jpeg then jpg)
+        candidates = [image_path, frames_dir / image_name.replace(".jpeg", ".jpg")]
+        chosen = next((p for p in candidates if p.exists()), None)
+
+        # Fallback: pick the first available frame for this camera
+        if chosen is None:
+            matches = sorted(frames_dir.glob(f"camera_{self.camera}_frame_*.jp*g"))
+            if matches:
+                chosen = matches[0]
+
+        if chosen is None:
+            raise FileNotFoundError(
+                f"Image not found in {frames_dir} for camera={self.camera}, frame_idx={self.frame_idx}"
+            )
+
         # Load image
-        image = Image.open(image_path).convert("RGB")
+        image = Image.open(chosen).convert("RGB")
         return np.array(image)
 
     def preprocess(self, output_folder: Path) -> None:

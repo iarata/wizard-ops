@@ -1,35 +1,43 @@
 import torch
-from torch import nn
+from torch import nn, optim
 import torchvision.models as models
+from lightning import LightningModule
 
 
-class NutritionPredictor(nn.Module):
+class NutritionPredictor(LightningModule):
     def __init__(self, num_outputs=5):
         super().__init__()
         # RGB stream
         self.resnet_rgb = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
         self.resnet_rgb.fc = nn.Identity()
         
-        # Depth stream
-        self.resnet_depth = models.resnet18(weights=None)
-        self.resnet_depth.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        self.resnet_depth.fc = nn.Identity()
-
         # Fusion Head
         self.fc = nn.Sequential(
-            nn.Linear(512 * 2, 512),
+            nn.Linear(512, 512),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(512, num_outputs)
         )
     
-    def forward(self, rgb_image, depth_image):
-        feat_rgb = self.resnet_rgb(rgb_image)
-        feat_depth = self.resnet_depth(depth_image)
-        fused = torch.cat([feat_rgb, feat_depth], dim=1)
-        return self.fc(fused)
+        self.criterion = nn.MSELoss()
 
+    def forward(self, rgb_image):
+        feat_rgb = self.resnet_rgb(rgb_image)
+        return self.fc(feat_rgb)
     
+    def training_step(self, batch, batch_idx):
+        img = batch['image']
+        nutrition = torch.stack([batch['calories'], batch['mass'], batch['fat'], batch['carbs'], batch['protein'] ],axis=1)
+
+        preds = self.forward(img)
+        loss = self.criterion(preds,nutrition)
+    
+    def configure_optimizers(self):
+        return optim.Adam(self.parameters(), lr=1e-2)
+    
+    
+        
+
 if __name__ == "__main__":
     model = NutritionPredictor()
     x = torch.rand(1, 3, 224, 224)
