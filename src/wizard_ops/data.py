@@ -323,6 +323,7 @@ class NutritionDataset(L.LightningDataModule):
             shuffle=True,
             num_workers=self.num_workers,
             pin_memory=True,
+            persistent_workers=True if self.num_workers > 0 else False,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -336,6 +337,7 @@ class NutritionDataset(L.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=True,
+            persistent_workers=True if self.num_workers > 0 else False,
         )
 
     def test_dataloader(self) -> DataLoader:
@@ -349,6 +351,7 @@ class NutritionDataset(L.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=True,
+            persistent_workers=True if self.num_workers > 0 else False,
         )
 
 
