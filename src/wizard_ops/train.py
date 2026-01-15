@@ -31,7 +31,7 @@ config = {
 @app.command()
 def train(num_workers: int = 4, 
           fast_dev_run: bool = False,
-          logger_type: Annotated[str, typer.Option(help="Logger to use for training", case_sensitive=False)] = "tensorboard") -> None:
+          logger_type: Annotated[str, typer.Option(help="Logger to use for training", case_sensitive=False)] = "wandb") -> None:
     """
     Train a NutritionPredictor model using the provided dataset and configuration.
 
