@@ -1,6 +1,6 @@
 import torch
-from torch import nn
 import torchvision.models as models
+from torch import nn
 
 
 class NutritionPredictor(nn.Module):
