@@ -7,10 +7,11 @@ import typer
 from typing import Annotated
 from loguru import logger
 from datetime import datetime
+import albumentations as A
 import hydra
 
-from wizard_ops.data import NutritionDataset, get_default_transforms
-from wizard_ops.model import NutritionPredictor
+from wizard_ops.data import NutritionDataModule, get_default_transforms
+from wizard_ops.model import DishMultiViewRegressor
 
 app = typer.Typer(help="Commands to train nutrition predictor.")
 
@@ -53,19 +54,32 @@ def train(frame_idx: int = 1,
     num_outputs = config["num_outputs"]
     train_val_test_split = config["train_val_test_split"]
 
-    transform = get_default_transforms()
-    dataset = NutritionDataset(
-        data_path="src/wizard_ops/data.nosync",
-        batch_size=batch_size,
-        frame_idx=frame_idx, 
-        num_workers=num_workers,
-        train_val_test_split=train_val_test_split,
-        camera=camera,
-        transform=transform,
-        seed=seed,
-    )
+    val_transform = get_default_transforms(image_size=224)
 
-    dataset.setup(stage="fit")
+    train_transform = A.Compose([
+        A.Resize(224, 224),
+        A.HorizontalFlip(p=0.5),  # Data augmentation only for training
+        A.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+        ),
+        A.ToTensorV2(),
+    ])
+
+    val_transform = get_default_transforms()
+    dataset = NutritionDataModule(
+        data_path="data.nosync",
+        dish_csv="src/wizard_ops/metadata/data_stats.csv",
+        batch_size=32,
+        image_size=224,
+        train_transform=train_transform,
+        val_transform=val_transform,
+        normalise_dish_metadata=True,
+        val_split=0.2,
+        num_workers=num_workers,
+        use_only_dishes_with_all_cameras=True,
+        seed=seed
+    )
 
     # Setup Logger based on user choice
     run_name = f"nutrition_resnet18_{datetime.now().strftime('%m%d_%H%M')}"
@@ -91,15 +105,12 @@ def train(frame_idx: int = 1,
         LearningRateMonitor(logging_interval="step")
     ]
 
-    model = NutritionPredictor(
-        num_outputs=num_outputs, 
-        lr=lr, 
-        seed=seed,
-        # Config for logging
-        batch_size=batch_size,
-        camera=camera,
-        frame_idx=frame_idx,
+    model = DishMultiViewRegressor(
+        lr=lr,
+        view_dropout_p=0.3,
+        hidden_dim=512
     )
+
     trainer = Trainer(accelerator=ACCELERATOR, 
                       max_epochs=max_epochs, 
                       fast_dev_run=fast_dev_run,
@@ -110,7 +121,7 @@ def train(frame_idx: int = 1,
 )
     logger.info(f"Starting run: {run_name}")
     trainer.fit(model, datamodule=dataset)
-
+    # Save the final model
     torch.save(model.state_dict(), "models/model.pth")
 
 if __name__ == "__main__":
