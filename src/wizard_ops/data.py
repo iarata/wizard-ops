@@ -1,8 +1,6 @@
 import logging
-import os
 import re
 from pathlib import Path
-from typing import Annotated, Callable
 
 import albumentations as A
 import lightning as L
@@ -10,7 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
-from torch.utils.data import DataLoader, Dataset, Subset, random_split
+from torch.utils.data import DataLoader, Dataset
 
 _DISH_TOTAL_COLUMNS = [
     "dish_id",
