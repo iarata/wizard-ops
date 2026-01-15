@@ -1,5 +1,9 @@
 docs/site/
+
+#logging
 lightning_logs/
+logs/
+checkpoints/
 
 # test cache
 manual_test/

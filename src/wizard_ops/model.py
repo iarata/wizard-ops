@@ -3,14 +3,15 @@ from torch import nn, optim
 import torchvision.models as models
 from lightning import LightningModule
 from lightning.pytorch import seed_everything
-from torchmetrics import MeanAbsoluteError, MeanSquaredError
+from torchmetrics import MeanAbsoluteError
 
 NUTRITION_COLUMNS = ["calories", "mass", "fat", "carbs", "protein"]
 
 
 class NutritionPredictor(LightningModule):
-    def __init__(self, num_outputs=5, lr=1e-3, freeze_backbone=True):
+    def __init__(self, num_outputs=5, lr=1e-3, freeze_backbone=True, seed=42):
         super().__init__()
+        seed_everything(seed=seed, workers=True)
         self.save_hyperparameters()
 
         # Load ResNet18
@@ -55,10 +56,11 @@ class NutritionPredictor(LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss, preds, y = self._shared_step(batch)
-        self.train_mae(preds, y)
+        self.train_mae.update(preds, y)
         
-        self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train_mae", self.train_mae, on_step=False, on_epoch=True, prog_bar=True)
+        batch_size = batch["image"].size(0)
+        self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch_size)
+        self.log("train_mae", self.train_mae, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch_size)
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -69,8 +71,9 @@ class NutritionPredictor(LightningModule):
         if batch_idx == 0:
             self.sample_results = {"preds": preds[:3].detach(), "labels": y[:3].detach()}
 
-        self.log("val_loss", loss, prog_bar=True, on_epoch=True)
-        self.log("val_mae", self.val_mae, prog_bar=True, on_epoch=True)
+        batch_size = batch["image"].size(0)
+        self.log("val_loss", loss, prog_bar=True, on_epoch=True, batch_size=batch_size)
+        self.log("val_mae", self.val_mae, prog_bar=True, on_epoch=True, batch_size=batch_size)
         return loss
 
     def on_validation_epoch_end(self):
