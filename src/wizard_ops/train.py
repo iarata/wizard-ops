@@ -7,6 +7,7 @@ import typer
 from typing import Annotated
 from loguru import logger
 from datetime import datetime
+import hydra
 
 from wizard_ops.data import NutritionDataset, get_default_transforms
 from wizard_ops.model import NutritionPredictor
@@ -14,7 +15,6 @@ from wizard_ops.model import NutritionPredictor
 app = typer.Typer(help="Commands to train nutrition predictor.")
 
 ACCELERATOR = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-
 
 config = {
     "seed": 42,
@@ -88,11 +88,18 @@ def train(frame_idx: int = 1,
             save_top_k=1,
             mode="min",
         ),
-        # Logs the learning rate so you can see the scheduler working
         LearningRateMonitor(logging_interval="step")
     ]
 
-    model = NutritionPredictor(num_outputs=num_outputs, lr=lr, seed=seed)
+    model = NutritionPredictor(
+        num_outputs=num_outputs, 
+        lr=lr, 
+        seed=seed,
+        # Config for logging
+        batch_size=batch_size,
+        camera=camera,
+        frame_idx=frame_idx,
+    )
     trainer = Trainer(accelerator=ACCELERATOR, 
                       max_epochs=max_epochs, 
                       fast_dev_run=fast_dev_run,
@@ -104,6 +111,7 @@ def train(frame_idx: int = 1,
     logger.info(f"Starting run: {run_name}")
     trainer.fit(model, datamodule=dataset)
 
+    torch.save(model.state_dict(), "models/model.pth")
 
 if __name__ == "__main__":
     app()

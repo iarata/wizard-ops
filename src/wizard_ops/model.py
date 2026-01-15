@@ -9,10 +9,10 @@ NUTRITION_COLUMNS = ["calories", "mass", "fat", "carbs", "protein"]
 
 
 class NutritionPredictor(LightningModule):
-    def __init__(self, num_outputs=5, lr=1e-3, freeze_backbone=True, seed=42):
+    def __init__(self, num_outputs=5, lr=1e-3, freeze_backbone=True, seed=42, **kwargs):
         super().__init__()
         seed_everything(seed=seed, workers=True)
-        self.save_hyperparameters()
+        self.save_hyperparameters()  # Saves all params including **kwargs
 
         # Load ResNet18
         backbone = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
