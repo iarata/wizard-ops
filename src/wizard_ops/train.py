@@ -1,16 +1,16 @@
-from lightning.pytorch.callbacks import RichProgressBar, ModelCheckpoint, LearningRateMonitor
-from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
-import torch
-from torch.utils.data import DataLoader
-from lightning import Trainer
-import typer
-from typing import Annotated
-from loguru import logger
 from datetime import datetime
+from typing import Annotated
+
 import albumentations as A
 import hydra
+import torch
+import typer
+from lightning import Trainer
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint, RichProgressBar
+from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
+from loguru import logger
 
-from wizard_ops.data import NutritionDataModule, get_default_transforms
+from wizard_ops.data import NutritionDataModule, get_default_transforms, NutritionFastDataModule
 from wizard_ops.model import DishMultiViewRegressor
 
 app = typer.Typer(help="Commands to train nutrition predictor.")
@@ -64,17 +64,27 @@ def train(num_workers: int = 4,
     ])
 
     val_transform = get_default_transforms(image_size=224)
-    dataset = NutritionDataModule(
-        data_path="data.nosync",
-        dish_csv="src/wizard_ops/metadata/data_stats.csv",
+    # dataset = NutritionDataModule(
+    #     data_path="data.nosync",
+    #     dish_csv="src/wizard_ops/metadata/data_stats.csv",
+    #     batch_size=batch_size,
+    #     image_size=224,
+    #     train_transform=train_transform,
+    #     val_transform=val_transform,
+    #     normalise_dish_metadata=True,
+    #     val_split=train_val_split,
+    #     num_workers=num_workers,
+    #     use_only_dishes_with_all_cameras=True,
+    #     seed=seed
+    # )
+    dataset = NutritionFastDataModule(
+        h5_path="data.nosync/images_224.h5",
+        dish_csv="configs/metadata/data_stats.csv",
         batch_size=batch_size,
-        image_size=224,
         train_transform=train_transform,
         val_transform=val_transform,
-        normalise_dish_metadata=True,
         val_split=train_val_split,
         num_workers=num_workers,
-        use_only_dishes_with_all_cameras=True,
         seed=seed
     )
 

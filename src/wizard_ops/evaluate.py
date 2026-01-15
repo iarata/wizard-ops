@@ -1,12 +1,12 @@
-import torch
-import numpy as np
-from PIL import Image
-from model import DishMultiViewRegressor
-import lightning as L
-import typer
 from typing import Annotated
 
+import lightning as L
+import numpy as np
+import torch
+import typer
 from data import get_default_transforms
+from model import DishMultiViewRegressor
+from PIL import Image
 
 app = typer.Typer()
 

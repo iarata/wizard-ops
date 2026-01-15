@@ -1,10 +1,11 @@
 import os
-from pathlib import Path
 import shutil
 import tempfile
+from pathlib import Path
+
+import numpy as np
 import pytest
 from PIL import Image
-import numpy as np
 
 import wizard_ops.train as train_module
 
