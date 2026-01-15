@@ -29,8 +29,7 @@ config = {
 
 
 @app.command()
-def train(frame_idx: int = 1, 
-          num_workers: int = 4, 
+def train(num_workers: int = 4, 
           fast_dev_run: bool = False,
           logger_type: Annotated[str, typer.Option(help="Logger to use for training", case_sensitive=False)] = "tensorboard") -> None:
     """
@@ -50,8 +49,6 @@ def train(frame_idx: int = 1,
     batch_size = config["batch_size"]
     lr = config["lr"]
     max_epochs = config["max_epochs"]
-    camera = config["camera"]
-    num_outputs = config["num_outputs"]
     train_val_test_split = config["train_val_test_split"]
 
     val_transform = get_default_transforms(image_size=224)
@@ -66,16 +63,16 @@ def train(frame_idx: int = 1,
         A.ToTensorV2(),
     ])
 
-    val_transform = get_default_transforms()
+    val_transform = get_default_transforms(image_size=224)
     dataset = NutritionDataModule(
         data_path="data.nosync",
         dish_csv="src/wizard_ops/metadata/data_stats.csv",
-        batch_size=32,
+        batch_size=batch_size,
         image_size=224,
         train_transform=train_transform,
         val_transform=val_transform,
         normalise_dish_metadata=True,
-        val_split=0.2,
+        val_split=train_val_test_split,
         num_workers=num_workers,
         use_only_dishes_with_all_cameras=True,
         seed=seed

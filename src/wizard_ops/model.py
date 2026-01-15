@@ -52,13 +52,13 @@ class DishMultiViewRegressor(L.LightningModule):
         # --- View aggregation ---
         self.pool = AttentionPool(dim=feat_dim)
 
-        # --- Regression head (6 outputs) ---
-        # Order: calories, mass, fat, carb, protein, num_ingrs
+        # --- Regression head (5 outputs) ---
+        # Order: calories, mass, fat, carb, protein, num_ingrs(IGNORED)
         self.head = nn.Sequential(
             nn.Linear(feat_dim, hidden_dim),
             nn.ReLU(inplace=True),
             nn.Dropout(p=0.1),
-            nn.Linear(hidden_dim, 6),
+            nn.Linear(hidden_dim, 5),
         )
 
         self.lr = lr
@@ -122,10 +122,10 @@ class DishMultiViewRegressor(L.LightningModule):
                 batch["total_fat"],
                 batch["total_carb"],
                 batch["total_protein"],
-                batch["num_ingrs"].float(),
+                # batch["num_ingrs"].float(),
             ],
             dim=1,
-        )  # (B, 6)
+        )  # (B, 5)
 
         preds, _ = self(images)
 
@@ -144,7 +144,7 @@ class DishMultiViewRegressor(L.LightningModule):
                 batch["total_fat"],
                 batch["total_carb"],
                 batch["total_protein"],
-                batch["num_ingrs"].float(),
+                # batch["num_ingrs"].float(),
             ],
             dim=1,
         )
