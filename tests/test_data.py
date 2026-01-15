@@ -5,7 +5,7 @@ import lightning as L
 import albumentations as A
 from torch.utils.data import Dataset
 from wizard_ops.data import Nutrition
-from wizard_ops.data import NutritionDataset
+from wizard_ops.data import Nutrition
 from wizard_ops.data import get_default_transforms, load_dish_metadata, load_ingredients_metadata
 
 
