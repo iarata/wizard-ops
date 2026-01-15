@@ -1,37 +1,157 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional
+
 import torch
-import torchvision.models as models
-from torch import nn
+import torch.nn as nn
+import torch.nn.functional as F
+import lightning as L
+from torchvision.models import resnet18, ResNet18_Weights
 
+class AttentionPool(nn.Module):
+    """
+    Permutation-invariant pooling over views.
+    Input:  x (B, V, D)
+    Output: z (B, D)
+    """
 
-class NutritionPredictor(nn.Module):
-    def __init__(self, num_outputs=5):
+    def __init__(self, dim: int):
         super().__init__()
-        # RGB stream
-        self.resnet_rgb = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-        self.resnet_rgb.fc = nn.Identity()
-        
-        # Depth stream
-        self.resnet_depth = models.resnet18(weights=None)
-        self.resnet_depth.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        self.resnet_depth.fc = nn.Identity()
+        self.score = nn.Linear(dim, 1)
 
-        # Fusion Head
-        self.fc = nn.Sequential(
-            nn.Linear(512 * 2, 512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, num_outputs)
+    def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None):
+        # x: (B, V, D)
+        logits = self.score(x).squeeze(-1)  # (B, V)
+
+        if mask is not None:
+            # mask: (B, V) with True for valid, False for padded
+            logits = logits.masked_fill(~mask, float("-inf"))
+
+        w = torch.softmax(logits, dim=1)  # (B, V)
+        z = torch.sum(x * w.unsqueeze(-1), dim=1)  # (B, D)
+        return z, w
+
+
+class DishMultiViewRegressor(L.LightningModule):
+    def __init__(
+        self,
+        lr: float = 3e-4,
+        view_dropout_p: float = 0.3,
+        hidden_dim: int = 512,
+    ):
+        super().__init__()
+        self.save_hyperparameters()
+
+        # --- Image encoder (shared across all views) ---
+        backbone = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+        feat_dim = backbone.fc.in_features
+        backbone.fc = nn.Identity()
+        self.encoder = backbone  # outputs (B*V, feat_dim)
+
+        # --- View aggregation ---
+        self.pool = AttentionPool(dim=feat_dim)
+
+        # --- Regression head (5 outputs) ---
+        # Order: calories, mass, fat, carb, protein, num_ingrs(IGNORED)
+        self.head = nn.Sequential(
+            nn.Linear(feat_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.1),
+            nn.Linear(hidden_dim, 5),
         )
-    
-    def forward(self, rgb_image, depth_image):
-        feat_rgb = self.resnet_rgb(rgb_image)
-        feat_depth = self.resnet_depth(depth_image)
-        fused = torch.cat([feat_rgb, feat_depth], dim=1)
-        return self.fc(fused)
 
-    
-if __name__ == "__main__":
-    model = NutritionPredictor()
-    x = torch.rand(1, 3, 224, 224)
-    depth_x = torch.rand(1, 1, 224, 224)
-    print(f"Output shape of model: {model(x, depth_x).shape}")
+        self.lr = lr
+        self.view_dropout_p = view_dropout_p
+
+    def _flatten_views(self, images: torch.Tensor):
+        """
+        Accept:
+          - (B, 4, 5, C, H, W) or
+          - (B, V, C, H, W)
+        Return:
+          - (B, V, C, H, W)
+        """
+        if images.ndim == 6:
+            b, a, f, c, h, w = images.shape
+            return images.view(b, a * f, c, h, w)
+        if images.ndim == 5:
+            return images
+        raise ValueError(f"Unexpected images shape: {images.shape}")
+
+    def _maybe_drop_views(self, images: torch.Tensor):
+        """
+        Randomly drop some views during training to make inference with fewer
+        images robust. Ensures at least 1 view remains per sample.
+        images: (B, V, C, H, W)
+        """
+        if not self.training or self.view_dropout_p <= 0:
+            return images, None
+
+        b, v, c, h, w = images.shape
+        keep = torch.rand(b, v, device=images.device) > self.view_dropout_p
+        # ensure at least one view kept per sample
+        for i in range(b):
+            if not keep[i].any():
+                keep[i, torch.randint(0, v, (1,), device=images.device)] = True
+
+        # Ragged selection per batch item is annoying; simplest is to keep padding
+        # and pass a mask into attention pooling.
+        return images, keep  # mask is (B, V)
+
+    def forward(self, images: torch.Tensor):
+        images = self._flatten_views(images)  # (B, V, C, H, W)
+        images, mask = self._maybe_drop_views(images)
+
+        b, v, c, h, w = images.shape
+        x = images.view(b * v, c, h, w)
+        feats = self.encoder(x)  # (B*V, D)
+        feats = feats.view(b, v, -1)  # (B, V, D)
+
+        dish_feat, attn_w = self.pool(feats, mask=mask)  # (B, D), (B, V)
+        y = self.head(dish_feat)  # (B, 6)
+
+        return y, attn_w
+
+    def training_step(self, batch, batch_idx):
+        images = batch["images"]
+        targets = torch.stack(
+            [
+                batch["total_calories"],
+                batch["total_mass"],
+                batch["total_fat"],
+                batch["total_carb"],
+                batch["total_protein"],
+                # batch["num_ingrs"].float(),
+            ],
+            dim=1,
+        )  # (B, 5)
+
+        preds, _ = self(images)
+
+        # Huber is robust for regression
+        loss = F.smooth_l1_loss(preds, targets)
+
+        self.log("train/loss", loss, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        images = batch["images"]
+        targets = torch.stack(
+            [
+                batch["total_calories"],
+                batch["total_mass"],
+                batch["total_fat"],
+                batch["total_carb"],
+                batch["total_protein"],
+                # batch["num_ingrs"].float(),
+            ],
+            dim=1,
+        )
+        preds, _ = self(images)
+        loss = F.smooth_l1_loss(preds, targets)
+        self.log("val/loss", loss, prog_bar=True)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.AdamW(self.parameters(), lr=self.lr)

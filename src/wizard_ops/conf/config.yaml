@@ -1,0 +1,8 @@
+hyperparameters:
+  seed: 42
+  batch_size: 32
+  lr: 1e-2
+  max_epochs: 10
+  camera: "D"
+  num_outputs: 5
+  train_val_test_split: [0.7, 0.15, 0.15]
