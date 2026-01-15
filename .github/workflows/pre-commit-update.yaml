@@ -3,9 +3,11 @@
 name: Pre-commit auto-update
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch: {}  # Allows manual executions
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+# Allows manual executions
 
 permissions:
   contents: write
