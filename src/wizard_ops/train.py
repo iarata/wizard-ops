@@ -1,9 +1,10 @@
 from lightning.pytorch.callbacks import RichProgressBar, ModelCheckpoint, LearningRateMonitor
-from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
 import torch
 from torch.utils.data import DataLoader
 from lightning import Trainer
 import typer
+from typing import Annotated
 from loguru import logger
 from datetime import datetime
 
@@ -14,12 +15,23 @@ app = typer.Typer(help="Commands to train nutrition predictor.")
 
 ACCELERATOR = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
+
+config = {
+    "seed": 42,
+    "batch_size": 32,
+    "lr": 1e-2,
+    "max_epochs": 10,
+    "camera": "D",
+    "num_outputs": 5,
+    "train_val_test_split": (0.7, 0.15, 0.15),
+}
+
+
 @app.command()
 def train(frame_idx: int = 1, 
           num_workers: int = 4, 
-          max_epochs: int = 3,
-          batch_size: int = 32,
-          fast_dev_run: bool = False) -> None:
+          fast_dev_run: bool = False,
+          logger_type: Annotated[str, typer.Option(help="Logger to use for training", case_sensitive=False)] = "tensorboard") -> None:
     """
     Train a NutritionPredictor model using the provided dataset and configuration.
 
@@ -32,21 +44,39 @@ def train(frame_idx: int = 1,
     Returns:
         None
     """
+
+    seed = config["seed"]
+    batch_size = config["batch_size"]
+    lr = config["lr"]
+    max_epochs = config["max_epochs"]
+    camera = config["camera"]
+    num_outputs = config["num_outputs"]
+    train_val_test_split = config["train_val_test_split"]
+
     transform = get_default_transforms()
     dataset = NutritionDataset(
-        data_path="src/wizard_ops/data.nosync", 
+        data_path="src/wizard_ops/data.nosync",
+        batch_size=batch_size,
         frame_idx=frame_idx, 
-        num_workers=num_workers, 
+        num_workers=num_workers,
+        train_val_test_split=train_val_test_split,
+        camera=camera,
         transform=transform,
-        batch_size=batch_size
+        seed=seed,
     )
 
     dataset.setup(stage="fit")
 
-    # Setup Logger (TensorBoard is built-in and easy)
-    # This creates a folder 'logs/nutrition_run_TIMESTAMP'
+    # Setup Logger based on user choice
     run_name = f"nutrition_resnet18_{datetime.now().strftime('%m%d_%H%M')}"
-    tb_logger = TensorBoardLogger(save_dir="logs", name=run_name)
+    logger_type = logger_type.lower()
+    
+    if logger_type == "tensorboard":
+        train_logger = TensorBoardLogger(save_dir="logs", name=run_name)
+    elif logger_type == "wandb":
+        train_logger = WandbLogger(project="nutrition-predictor", name=run_name, log_model="all")
+    else:
+        raise typer.BadParameter(f"Invalid logger_type: {logger_type}. Must be 'tensorboard' or 'wandb'.")
 
     callbacks = [
         RichProgressBar(),
@@ -62,20 +92,11 @@ def train(frame_idx: int = 1,
         LearningRateMonitor(logging_interval="step")
     ]
 
-    # train_len = len(dataset.train_dataloader().dataset)
-    # val_len = len(dataset.val_dataloader().dataset) if hasattr(dataset, "val_dataloader") else None
-    # batch = next(iter(dataset.train_dataloader()))
-
-    # logger.info(f"Train samples: {train_len}, val samples: {val_len}, total samples: {train_len + val_len}")
-    # logger.debug(f"Image batch shape: {batch['image'].shape}")
-    # nutrition = torch.stack([batch[column] for column in ["calories", "mass", "fat", "carbs", "protein"]], dim=1)
-    # logger.debug(f"Nutrition batch shape: {nutrition.shape}")
-
-    model = NutritionPredictor()
+    model = NutritionPredictor(num_outputs=num_outputs, lr=lr, seed=seed)
     trainer = Trainer(accelerator=ACCELERATOR, 
                       max_epochs=max_epochs, 
                       fast_dev_run=fast_dev_run,
-                      logger=tb_logger,
+                      logger=train_logger,
                       callbacks=callbacks,
                       log_every_n_steps=1,
                       enable_model_summary=True      
