@@ -24,7 +24,7 @@ config = {
     "max_epochs": 10,
     "camera": "D",
     "num_outputs": 5,
-    "train_val_test_split": (0.7, 0.15, 0.15),
+    "train_val_split": 0.2,
 }
 
 
@@ -49,7 +49,7 @@ def train(num_workers: int = 4,
     batch_size = config["batch_size"]
     lr = config["lr"]
     max_epochs = config["max_epochs"]
-    train_val_test_split = config["train_val_test_split"]
+    train_val_split = config["train_val_split"]
 
     val_transform = get_default_transforms(image_size=224)
 
@@ -72,7 +72,7 @@ def train(num_workers: int = 4,
         train_transform=train_transform,
         val_transform=val_transform,
         normalise_dish_metadata=True,
-        val_split=train_val_test_split,
+        val_split=train_val_split,
         num_workers=num_workers,
         use_only_dishes_with_all_cameras=True,
         seed=seed
@@ -93,9 +93,9 @@ def train(num_workers: int = 4,
         RichProgressBar(),
         # Saves the best model based on validation loss
         ModelCheckpoint(
-            monitor="val_loss",
+            monitor="val/loss",
             dirpath=f"checkpoints/{run_name}",
-            filename="best-nutrition-{epoch:02d}-{val_loss:.2f}",
+            filename="best-nutrition-{epoch:02d}-{val-loss:.2f}",
             save_top_k=1,
             mode="min",
         ),
