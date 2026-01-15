@@ -142,7 +142,7 @@ def generate_metadata(
     if frame:
         valid_dish_ids = []
         for dish_id in unified["dish_id"]:
-            dish_dir = data_path / dish_id / "frames_sampled30"
+            dish_dir = data_path / dish_id
             if not dish_dir.exists():
                 continue
             frame_images = [
@@ -159,6 +159,50 @@ def generate_metadata(
     output_file = output_path / f"dish_metadata_{frame}.csv"
     unified.to_csv(output_file, index=False)
     print(f"Saved unified dish metadata to: {output_file}")
+    
+    
+    
+@app.command("stats")
+def get_data_stats(
+    data_dir: Annotated[str, typer.Option("--data-dir", "-d", help="Directory where the dataset is stored")],
+    save_path: Annotated[str, typer.Option("--save-path", "-s", help="Path to save the stats DataFrame as CSV")] = "data_stats.csv",
+):
+    """
+    Get a pandas frame of the dataset with columns of _DISH_TOTAL_COLUMNS + "num_images_camera_{A..D}"
+
+    Args:
+        data_dir (Annotated[str, typer.Option, optional): _description_. Defaults to "Directory where the dataset is stored")].
+    """
+    data_path = Path(data_dir)
+    
+    dish_meta = load_dish_metadata()
+    print(f"Loaded dish metadata with shape: {dish_meta.shape}")
+    
+    stats_rows = []
+    for idx, row in dish_meta.iterrows():
+        dish_id = row["dish_id"]
+        dish_dir = data_path / dish_id
+        if not dish_dir.exists():
+            continue
+        
+        image_counts = {f"num_images_camera_{cam}": 0 for cam in ['A', 'B', 'C', 'D']}
+        for img_file in dish_dir.iterdir():
+            for cam in ['A', 'B', 'C', 'D']:
+                if re.match(rf"camera_{cam}_.*\.jpeg$", img_file.name):
+                    image_counts[f"num_images_camera_{cam}"] += 1
+                    
+        stats_row = row.to_dict()
+        stats_row.update(image_counts)
+        stats_rows.append(stats_row)
+        
+    stats_df = pd.DataFrame(stats_rows)
+    print(f"Dataset stats shape: {stats_df.shape}")
+    print(stats_df.head())
+    
+    stats_df.to_csv(save_path, index=False)
+    print(f"Saved dataset stats to: {save_path}")
+    
+    return stats_df
     
     
 
