@@ -8,6 +8,7 @@ from typing import Annotated
 
 from data import get_default_transforms, NutritionDataModule, denormalize
 
+
 app = typer.Typer()
 
 @app.command()
@@ -20,6 +21,7 @@ def evaluate_test_sample(
     sample_idx: Annotated[int, typer.Option(help="Index of validation sample to test")] = 0,
     print_stats: Annotated[bool, typer.Option(help="Print normalization statistics")] = False,
     print_normalized: Annotated[bool, typer.Option(help="Print normalized values (0-1 scale)")] = False,
+    uncertainty : Annotated[bool, typer.Option(help="Add uncertainty to predictions based on monte-carlo dropout.")] = False,
 ):
     """Load a test sample from the validation set, make a prediction, and compare with ground truth."""
     
@@ -49,7 +51,8 @@ def evaluate_test_sample(
     # Setup and get validation dataset
     data_module.setup()
     val_dataset = data_module.val_dataset
-    
+    norm_stats = val_dataset.normalization_stats
+
     typer.echo(f"Validation dataset size: {len(val_dataset)}")
     typer.echo(f"Loading sample at index {sample_idx}...")
     typer.echo()
@@ -70,52 +73,111 @@ def evaluate_test_sample(
         "total_protein": float(sample["total_protein"]),
     }
     
-    # Make prediction
-    preds, attn = model(images)
-    preds = preds.squeeze(0).cpu()
-    
-    # Extract predictions
-    predictions_normalized = {
-        "total_calories": float(preds[0]),
-        "total_mass": float(preds[1]),
-        "total_fat": float(preds[2]),
-        "total_carb": float(preds[3]),
-        "total_protein": float(preds[4]),
-    }
-    
-    # Denormalize predictions and ground truth
-    norm_stats = val_dataset.normalization_stats
-    predictions_denormalized = denormalize(predictions_normalized, norm_stats)
-    ground_truth_denormalized = denormalize(ground_truth, norm_stats)
-    
-    # Print results
+    # Print Dish ID
     typer.echo("=" * 80)
     typer.echo(f"DISH ID: {dish_id}")
     typer.echo("=" * 80)
     typer.echo()
     
-    if print_normalized:
-        typer.echo("NORMALIZED VALUES (0-1 scale):")
+    if uncertainty:
+        mean_normalized, std_normalized = model.predict_with_uncertainty(images)
+        mean_normalized = mean_normalized.cpu()
+        std_normalized = std_normalized.cpu()
+
+        # Convert to dict for denormalization
+        mean_dict = {
+            "total_calories": float(mean_normalized[0, 0]),
+            "total_mass": float(mean_normalized[0, 1]),
+            "total_fat": float(mean_normalized[0, 2]),
+            "total_carb": float(mean_normalized[0, 3]),
+            "total_protein": float(mean_normalized[0, 4]),
+        }
+
+        std_dict = {
+            "total_calories": float(std_normalized[0, 0]),
+            "total_mass": float(std_normalized[0, 1]),
+            "total_fat": float(std_normalized[0, 2]),
+            "total_carb": float(std_normalized[0, 3]),
+            "total_protein": float(std_normalized[0, 4]),
+        }
+
+        # Denormalize mean: multiply by max_val
+        mean_denormalized = denormalize(mean_dict, norm_stats)
+
+        # Denormalize std: also multiply by max_val (std scales linearly)
+        std_denormalized = denormalize(std_dict, norm_stats)
+        
+        # Denormalize ground truth
+        ground_truth_denormalized = denormalize(ground_truth, norm_stats)
+
+        # Print prediction and ground truth
+        if print_normalized:
+            typer.echo("NORMALIZED VALUES (0-1 scale):")
+            typer.echo("-" * 80)
+            typer.echo(f"{'Metric':<20} {'Predicted':<15} {'Actual':<15} {'Difference':<15}")
+            typer.echo("-" * 80)
+            for key in mean_dict.keys():
+                pred = mean_dict[key]
+                std = std_dict[key]
+                actual = ground_truth[key]
+                diff = pred - actual
+                typer.echo(f"{key:<20} {pred:>7.4f} ± {std:<6.4f} {actual:<15.4f} {diff:<15.4f}")
+            typer.echo()
+        
+        typer.echo("DENORMALIZED VALUES (original units):")
         typer.echo("-" * 80)
         typer.echo(f"{'Metric':<20} {'Predicted':<15} {'Actual':<15} {'Difference':<15}")
         typer.echo("-" * 80)
-        for key in predictions_normalized.keys():
-            pred = predictions_normalized[key]
-            actual = ground_truth[key]
+        for key in mean_denormalized.keys():
+            pred = mean_denormalized[key]
+            std = std_denormalized[key]
+            actual = ground_truth_denormalized[key]
             diff = pred - actual
-            typer.echo(f"{key:<20} {pred:<15.4f} {actual:<15.4f} {diff:<15.4f}")
+            typer.echo(f"{key:<20} {pred:>7.2f} ± {std:<6.2f} {actual:<15.2f} {diff:<15.2f}")
         typer.echo()
-    
-    typer.echo("DENORMALIZED VALUES (original units):")
-    typer.echo("-" * 80)
-    typer.echo(f"{'Metric':<20} {'Predicted':<15} {'Actual':<15} {'Difference':<15}")
-    typer.echo("-" * 80)
-    for key in predictions_denormalized.keys():
-        pred = predictions_denormalized[key]
-        actual = ground_truth_denormalized[key]
-        diff = pred - actual
-        typer.echo(f"{key:<20} {pred:<15.2f} {actual:<15.2f} {diff:<15.2f}")
-    typer.echo()
+
+
+    else:
+        # Make prediction
+        preds, attn = model(images)
+        preds = preds.squeeze(0).cpu()
+        
+        # Extract predictions
+        predictions_normalized = {
+            "total_calories": float(preds[0]),
+            "total_mass": float(preds[1]),
+            "total_fat": float(preds[2]),
+            "total_carb": float(preds[3]),
+            "total_protein": float(preds[4]),
+        }
+
+        # Denormalize predictions and ground truth
+        predictions_denormalized = denormalize(predictions_normalized, norm_stats)
+        ground_truth_denormalized = denormalize(ground_truth, norm_stats)
+
+        # Print prediction and ground truth
+        if print_normalized:
+            typer.echo("NORMALIZED VALUES (0-1 scale):")
+            typer.echo("-" * 80)
+            typer.echo(f"{'Metric':<20} {'Predicted':<15} {'Actual':<15} {'Difference':<15}")
+            typer.echo("-" * 80)
+            for key in predictions_normalized.keys():
+                pred = predictions_normalized[key]
+                actual = ground_truth[key]
+                diff = pred - actual
+                typer.echo(f"{key:<20} {pred:<15.4f} {actual:<15.4f} {diff:<15.4f}")
+            typer.echo()
+        
+        typer.echo("DENORMALIZED VALUES (original units):")
+        typer.echo("-" * 80)
+        typer.echo(f"{'Metric':<20} {'Predicted':<15} {'Actual':<15} {'Difference':<15}")
+        typer.echo("-" * 80)
+        for key in predictions_denormalized.keys():
+            pred = predictions_denormalized[key]
+            actual = ground_truth_denormalized[key]
+            diff = pred - actual
+            typer.echo(f"{key:<20} {pred:<15.2f} {actual:<15.2f} {diff:<15.2f}")
+        typer.echo()
     
     if print_stats:
         typer.echo("NORMALIZATION STATS (max values):")

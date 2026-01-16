@@ -1,5 +1,6 @@
 docs/site/
 raw_data.nosync
+data_old.nosync/
 
 #logging
 lightning_logs/

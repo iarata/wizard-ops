@@ -57,8 +57,11 @@ class DishMultiViewRegressor(L.LightningModule):
         self.head = nn.Sequential(
             nn.Linear(feat_dim, hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.1),
-            nn.Linear(hidden_dim, 5),
+            nn.Dropout(p=0.3),  # Increased for better MC dropout uncertainty
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.3),  # Additional dropout layer
+            nn.Linear(hidden_dim // 2, 5),
         )
 
         self.lr = lr
@@ -112,6 +115,44 @@ class DishMultiViewRegressor(L.LightningModule):
         y = self.head(dish_feat)  # (B, 6)
 
         return y, attn_w
+    
+    def predict_with_uncertainty(self, images, n_samples=20):
+        """Monte Carlo Dropout for uncertainty estimation.
+        
+        Enables only the dropout in the head for MC sampling, while keeping
+        the model in eval mode to prevent view dropout and maintain BatchNorm behavior.
+        
+        Args:
+            images: Input images (B, V, C, H, W)
+            n_samples: Number of forward passes for MC sampling
+            
+        Returns:
+            mean_pred: (B, 5) mean predictions across samples
+            std_pred: (B, 5) prediction uncertainty (standard deviation)
+        """
+        # Keep model in eval mode to prevent view dropout
+        self.eval()
+        
+        # Enable dropout only in the head for MC sampling
+        for module in self.head.modules():
+            if isinstance(module, nn.Dropout):
+                module.train()
+        
+        predictions = []
+        
+        with torch.no_grad():
+            for _ in range(n_samples):
+                pred, _ = self(images)
+                predictions.append(pred)
+        
+        predictions = torch.stack(predictions)  # (n_samples, B, 5)
+        mean_pred = predictions.mean(dim=0)
+        std_pred = predictions.std(dim=0)
+        
+        # Restore eval mode for all dropout layers
+        self.eval()
+        
+        return mean_pred, std_pred
 
     def training_step(self, batch, batch_idx):
         images = batch["images"]
