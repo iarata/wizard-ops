@@ -151,13 +151,17 @@ will check the repositories and the code to verify your answers.
 ### Question 1
 > **Enter the group number you signed up on <learn.inside.dtu.dk>**
 >
-> Answer: Team 33
+> Answer:
+
+Team 33
 
 
 ### Question 2
 > **Enter the study number for each member in the group**
 >
-> Answer: s253471, s253033, s253081, s223190, alihaj
+> Answer:
+
+s253471, s253033, s253081, s223190, alihaj
 
 ### Question 3
 > **A requirement to the project is that you include a third-party package not covered in the course. What framework**
