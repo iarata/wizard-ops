@@ -187,3 +187,6 @@ cython_debug/
 
 # wanbd
 wandb/
+
+
+evaluate_comparison.py
