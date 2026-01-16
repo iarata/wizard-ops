@@ -5,7 +5,6 @@ import lightning as L
 import albumentations as A
 from torch.utils.data import Dataset
 from wizard_ops.data import Nutrition
-from wizard_ops.data import Nutrition
 from wizard_ops.data import get_default_transforms, load_dish_metadata, load_ingredients_metadata
 
 
@@ -39,8 +38,8 @@ def test_nutrition_dataset_index_error(tmp_path):
 
 
 def test_nutrition_datamodule_init(tmp_path):
-    """Test the NutritionDataset DataModule init."""
-    datamodule = NutritionDataset(data_path=tmp_path, batch_size=16)
+    """Test the Nutrition DataModule init."""
+    datamodule = Nutrition(data_path=tmp_path, batch_size=16)
     assert isinstance(datamodule, L.LightningDataModule)
     assert datamodule.batch_size == 16
     assert datamodule.num_workers == 4
@@ -48,8 +47,8 @@ def test_nutrition_datamodule_init(tmp_path):
 
 
 def test_nutrition_datamodule_custom_split(tmp_path):
-    """Test the NutritionDataset DataModule with custom split."""
-    datamodule = NutritionDataset(
+    """Test the Nutrition DataModule with custom split."""
+    datamodule = Nutrition(
         data_path=tmp_path,
         train_val_test_split=(0.8, 0.1, 0.1),
         seed=123,
@@ -59,8 +58,8 @@ def test_nutrition_datamodule_custom_split(tmp_path):
 
 
 def test_nutrition_datamodule_setup(tmp_path):
-    """Test the NutritionDataset DataModule setup."""
-    datamodule = NutritionDataset(data_path=tmp_path)
+    """Test the Nutrition DataModule setup."""
+    datamodule = Nutrition(data_path=tmp_path)
     datamodule.setup(stage="fit")
     assert datamodule.train_dataset is not None
     assert datamodule.val_dataset is not None
@@ -69,7 +68,7 @@ def test_nutrition_datamodule_setup(tmp_path):
 
 def test_nutrition_datamodule_dataloaders_error(tmp_path):
     """Test that dataloaders raise error before setup."""
-    datamodule = NutritionDataset(data_path=tmp_path)
+    datamodule = Nutrition(data_path=tmp_path)
     with pytest.raises(RuntimeError):
         datamodule.train_dataloader()
     with pytest.raises(RuntimeError):
