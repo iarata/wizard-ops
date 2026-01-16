@@ -1,6 +1,5 @@
-import torch
 import pytest
-
+import torch
 from wizard_ops.model import NutritionPredictor
 
 
