@@ -169,7 +169,13 @@ will check the repositories and the code to verify your answers.
 > *We used the third-party framework ... in our project. We used functionality ... and functionality ... from the*
 > *package to do ... and ... in our project*.
 >
-> Answer: The library we've used in our project is Albumations (https://pypi.org/project/albumentations/). 
+> Answer:
+
+The library we've used in our project is Albumations
+(https://pypi.org/project/albumentations/). It is a library commonly used in
+Computer Vision applications to derive new samples for training higher quality
+models. We used it to apply transformations to our input images such as resizing
+and normalizing.
 
 
 ## Coding environment
