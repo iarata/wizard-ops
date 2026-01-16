@@ -57,11 +57,8 @@ class DishMultiViewRegressor(L.LightningModule):
         self.head = nn.Sequential(
             nn.Linear(feat_dim, hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.3),  # Increased for better MC dropout uncertainty
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.3),  # Additional dropout layer
-            nn.Linear(hidden_dim // 2, 5),
+            nn.Dropout(p=0.1),
+            nn.Linear(hidden_dim, 5),
         )
 
         self.lr = lr
