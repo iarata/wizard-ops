@@ -1,4 +1,5 @@
 from typing import Annotated
+
 import lightning as L
 import numpy as np
 import torch
