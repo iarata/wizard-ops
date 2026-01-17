@@ -1,9 +1,30 @@
 # Project description: Nutrition Predictor
 The overall goal of the project is to train a neural network (NN) model that can predict the nutritional value of a plate of food based on an image of the plate. 
 
-The model is trained on a subset of the original Nutrition5k dataset (https://console.cloud.google.com/storage/browser/nutrition5k_dataset), that comes from a project conducted by Google Research (https://github.com/google-research-datasets/Nutrition5k?tab=readme-ov-file#download-data). Originally, the data is 108 GB, and our sample is 11 GB. The dataset contains 20 samples per plate of food. The images of each plate of food are taken from different angles (A, B, C, D), and we are using all of them for the training purposes. What the model is trying to predict is the nutritional value of the dish, corresponding to 5 outputs - calories, mass, protein, fats and carbohydrates. The images are in .jpeg format. 
+The overall goal of the project is to train a model that can predict the
+nutritional value of a plate of food based on an image of the plate.
 
-The model is based on the ResNet18 architecture. The input data is scaled separately for train and validation steps, to ensure data leakage does not occur. 
+The model is trained on a subset of the
+[Nutrition5k dataset](https://github.com/google-research-datasets/Nutrition5k?tab=readme-ov-file)
+containing
+[side angle images](https://www.kaggle.com/datasets/zygmuntyt/nutrition5k-dataset-side-angle-images/data).
+The kaggle dataset contains 20 samples per plate of food: four cameras, out of
+which were extracted five consecutive frames. We will use only one of
+these angles per plate (configurable via Hydra).
+
+After processing, our dataset will contain a single image of 5000 different
+dishes and metadata for each dish corresponding to 0.6GB of (uncompressed) data.
+The images are JPEGs, and the metadata a CSV containing the total calories, mass,
+fat, carb and protein associated with each dish ID.
+
+We use ResNet18 as backbone, and we adapt it for regression by replacing the
+final classification layer with a small FF network that outputs the nutritional
+values. The pretrained backbone serves as a feature extractor, with its weights
+frozen during training while the regression head is learned. This architecture
+follows approaches we have commonly seen in Kaggle notebooks for the Nutrition5k
+dataset. While published work has employed larger models like InceptionV2 and
+ResNet50/101 ([Thames et al., 2021](https://arxiv.org/abs/2103.03375)), ResNet18
+is a reasonable choice for purposes not focused on prediction accuracy.
 
 
 # Exam template for 02476 Machine Learning Operations
@@ -128,13 +149,17 @@ will check the repositories and the code to verify your answers.
 ### Question 1
 > **Enter the group number you signed up on <learn.inside.dtu.dk>**
 >
-> Answer: Team 33
+> Answer:
+
+Team 33
 
 
 ### Question 2
 > **Enter the study number for each member in the group**
 >
-> Answer: s253471, s253033, s253081, s223190, alihaj
+> Answer:
+
+s253471, s253033, s253081, s223190, alihaj
 
 ### Question 3
 > **A requirement to the project is that you include a third-party package not covered in the course. What framework**
@@ -146,7 +171,13 @@ will check the repositories and the code to verify your answers.
 > *We used the third-party framework ... in our project. We used functionality ... and functionality ... from the*
 > *package to do ... and ... in our project*.
 >
-> Answer: The library we've used in our project is Albumations (https://pypi.org/project/albumentations/). 
+> Answer:
+
+The library we've used in our project is Albumations
+(https://pypi.org/project/albumentations/). It is a library commonly used in
+Computer Vision applications to derive new samples for training higher quality
+models. We used it to apply transformations to our input images such as resizing
+and normalizing.
 
 
 ## Coding environment
