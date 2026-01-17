@@ -4,10 +4,14 @@ build-backend = "uv_build"
 
 [project]
 name = "wizard_ops"
-version = "0.0.3"
-description = "Food Nutrition"
+version = "0.0.2"
+description = "Food Nutrition Predictor Using ResNet18"
 authors = [
-  { name = "Witches \u0026 Wizards", email = "your@email.com" },
+  { name = "Yubaba", email = "s223190@dtu.dk" },
+  { name = "Malificent", email = "s253081@dtu.dk" },
+  { name = "Eleven", email = "s253471@dtu.dk"},
+  { name = "Wanda", email = "s253033@dtu.dk"},
+  { name = "Merlin", email = "alihaj@dtu.dk"}
 ]
 
 keywords = ["machine learning", "MLOps"]

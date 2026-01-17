@@ -1,13 +1,9 @@
-# Project description
-a) Overall goal
-b) what data are we going to run on. Describe number of samples, size, modality.
-c) What models do you expect to use
+# Project description: Nutrition Predictor
+The overall goal of the project is to train a neural network (NN) model that can predict the nutritional value of a plate of food based on an image of the plate. 
 
-The overall goal of the project is to train a model that can predict the nutritional value of a plate of food based on an image of the plate. 
+The model is trained on a subset of the original Nutrition5k dataset (https://console.cloud.google.com/storage/browser/nutrition5k_dataset), that comes from a project conducted by Google Research (https://github.com/google-research-datasets/Nutrition5k?tab=readme-ov-file#download-data). Originally, the data is 108 GB, and our sample is 11 GB. The dataset contains 20 samples per plate of food. The images of each plate of food are taken from different angles (A, B, C, D), and we are using all of them for the training purposes. What the model is trying to predict is the nutritional value of the dish, corresponding to 5 outputs - calories, mass, protein, fats and carbohydrates. The images are in .jpeg format. 
 
-The model is trained on a subset of the Nutrition5k dataset (https://github.com/google-research-datasets/Nutrition5k?tab=readme-ov-file) containing side angle images (https://www.kaggle.com/datasets/zygmuntyt/nutrition5k-dataset-side-angle-images/data). The kaggle dataset contrains 16 samples per plate of food. We will use one of these angles per plate. Our dataset contains a single image of 5000 different dishes and metadata for each dish corresponding XX of data. The images are (format), and the metadata containing the total calories, mass, fat, carb and protein.
-
-The model is based on the ResNet18 architecture.
+The model is based on the ResNet18 architecture. The input data is scaled separately for train and validation steps, to ensure data leakage does not occur. 
 
 
 # Exam template for 02476 Machine Learning Operations
@@ -73,7 +69,7 @@ will check the repositories and the code to verify your answers.
 * [ ] Remember to fill out the `requirements.txt` and `requirements_dev.txt` file with whatever dependencies that you
     are using (M2+M6)
 * [x] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
-* [ ] Do a bit of code typing and remember to document essential parts of your code (M7)
+* [x] Do a bit of code typing and remember to document essential parts of your code (M7)
 * [x] Setup version control for your data or part of your data (M8)
 * [x] Add command line interfaces and project commands to your code where it makes sense (M9)
 * [x] Construct one or multiple docker files for your code (M10)
@@ -88,13 +84,13 @@ will check the repositories and the code to verify your answers.
 
 ### Week 2
 
-* [ ] Write unit tests related to the data part of your code (M16)
-* [ ] Write unit tests related to model construction and or model training (M16)
-* [ ] Calculate the code coverage (M16)
-* [ ] Get some continuous integration running on the GitHub repository (M17)
+* [x] Write unit tests related to the data part of your code (M16)
+* [x] Write unit tests related to model construction and or model training (M16)
+* [x] Calculate the code coverage (M16)
+* [x] Get some continuous integration running on the GitHub repository (M17)
 * [ ] Add caching and multi-os/python/pytorch testing to your continuous integration (M17)
-* [ ] Add a linting step to your continuous integration (M17)
-* [ ] Add pre-commit hooks to your version control setup (M18)
+* [x] Add a linting step to your continuous integration (M17)
+* [x] Add pre-commit hooks to your version control setup (M18)
 * [ ] Add a continues workflow that triggers when data changes (M19)
 * [ ] Add a continues workflow that triggers when changes to the model registry is made (M19)
 * [ ] Create a data storage in GCP Bucket for your data and link this with your data version control setup (M21)
