@@ -1,5 +1,6 @@
 docs/site/
 raw_data.nosync
+data_old.nosync/
 
 #logging
 lightning_logs/
@@ -187,3 +188,6 @@ cython_debug/
 
 # wanbd
 wandb/
+
+
+evaluate_comparison.py
