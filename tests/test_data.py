@@ -3,9 +3,7 @@ import lightning as L
 import pandas as pd
 import pytest
 from torch.utils.data import Dataset
-from wizard_ops.data-cli import Nutrition
-from wizard_ops.data-cli import NutritionDataset
-from wizard_ops.data-cli import get_default_transforms, load_dish_metadata, load_ingredients_metadata
+from wizard_ops.data import Nutrition, get_default_transforms
 
 
 def test_nutrition_dataset_init(tmp_path):
