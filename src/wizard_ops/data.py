@@ -46,7 +46,22 @@ def get_default_transforms(image_size: int = 224) -> A.Compose:
         ),
         A.ToTensorV2(),
     ])
+
+def denormalize(sample_normalized: dict[str, float], norm_stats: dict[str, float] | None) -> dict[str, float]:
+    """Denormalize nutrition values by multiplying by their max values.
     
+    Args:
+        sample_normalized: Dictionary of normalized nutrition values (0-1 scale).
+        norm_stats: Dictionary mapping nutrition metric names to their max values.
+                   If None, returns the original values unchanged.
+    
+    Returns:
+        Dictionary of denormalized values in original units.
+    """
+    if norm_stats:
+        return {key: value * norm_stats.get(key, 1.0) for key, value in sample_normalized.items()}
+    return sample_normalized
+
     
 class Nutrition(Dataset):
     """Custom dataset for Nutrition data."""
