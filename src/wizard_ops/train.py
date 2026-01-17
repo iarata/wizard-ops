@@ -1,14 +1,15 @@
-from lightning.pytorch.callbacks import RichProgressBar, ModelCheckpoint, LearningRateMonitor
-from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
-import torch
-from torch.utils.data import DataLoader
-from lightning import Trainer
-import typer
-from typing import Annotated
-from loguru import logger
 from datetime import datetime
+from typing import Annotated
+
 import albumentations as A
 import hydra
+import torch
+import typer
+from lightning import Trainer
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint, RichProgressBar
+from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
+from loguru import logger
+from torch.utils.data import DataLoader
 
 from wizard_ops.data import NutritionDataModule, get_default_transforms
 from wizard_ops.model import DishMultiViewRegressor

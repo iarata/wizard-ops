@@ -1,12 +1,12 @@
 import os
-from pathlib import Path
 import shutil
 import tempfile
-import pytest
-from PIL import Image
-import numpy as np
+from pathlib import Path
 
+import numpy as np
+import pytest
 import wizard_ops.train as train_module
+from PIL import Image
 
 
 def _make_dummy_dataset(tmpdir: Path, dish_id: str = "dish_0", camera: str = "D", frame_idx: int = 1):

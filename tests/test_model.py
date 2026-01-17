@@ -1,11 +1,10 @@
-import torch
 import pytest
-
-from wizard_ops.model import NutritionPredictor
+import torch
+from wizard_ops.model import DishMultiViewRegressor
 
 
 def test_forward_shape():
-    model = NutritionPredictor(num_outputs=5, freeze_backbone=False, lr=1e-3)
+    model = DishMultiViewRegressor(num_outputs=5, freeze_backbone=False, lr=1e-3)
     model.eval()
     x = torch.randn(2, 3, 224, 224)
     out = model(x)
@@ -14,17 +13,17 @@ def test_forward_shape():
 
 
 def test_freeze_backbone_flag():
-    m1 = NutritionPredictor(freeze_backbone=True)
+    m1 = DishMultiViewRegressor(freeze_backbone=True)
     # all backbone parameters should be frozen
     assert all(not p.requires_grad for p in m1.backbone.parameters())
 
-    m2 = NutritionPredictor(freeze_backbone=False)
+    m2 = DishMultiViewRegressor(freeze_backbone=False)
     # at least one parameter should be trainable when not frozen
     assert any(p.requires_grad for p in m2.backbone.parameters())
 
 
 def test_configure_optimizers_structure():
-    model = NutritionPredictor()
+    model = DishMultiViewRegressor()
     opt_dict = model.configure_optimizers()
     assert isinstance(opt_dict, dict)
     assert "optimizer" in opt_dict
@@ -36,7 +35,7 @@ def test_configure_optimizers_structure():
 
 
 def test_hparams_saved():
-    model = NutritionPredictor(lr=0.007)
+    model = DishMultiViewRegressor(lr=0.007)
     assert hasattr(model, "hparams")
     # hparams may be mapping-like or an object with attributes
     if hasattr(model.hparams, "get"):
