@@ -1,113 +1,157 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional
+
 import torch
-from torch import nn, optim
-import torchvision.models as models
-from lightning import LightningModule
-from lightning.pytorch import seed_everything
-from torchmetrics import MeanAbsoluteError
+import torch.nn as nn
+import torch.nn.functional as F
+import lightning as L
+from torchvision.models import resnet18, ResNet18_Weights
 
-NUTRITION_COLUMNS = ["calories", "mass", "fat", "carbs", "protein"]
+class AttentionPool(nn.Module):
+    """
+    Permutation-invariant pooling over views.
+    Input:  x (B, V, D)
+    Output: z (B, D)
+    """
 
-
-class NutritionPredictor(LightningModule):
-    def __init__(self, num_outputs=5, lr=1e-3, freeze_backbone=True, seed=42):
+    def __init__(self, dim: int):
         super().__init__()
-        seed_everything(seed=seed, workers=True)
+        self.score = nn.Linear(dim, 1)
+
+    def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None):
+        # x: (B, V, D)
+        logits = self.score(x).squeeze(-1)  # (B, V)
+
+        if mask is not None:
+            # mask: (B, V) with True for valid, False for padded
+            logits = logits.masked_fill(~mask, float("-inf"))
+
+        w = torch.softmax(logits, dim=1)  # (B, V)
+        z = torch.sum(x * w.unsqueeze(-1), dim=1)  # (B, D)
+        return z, w
+
+
+class DishMultiViewRegressor(L.LightningModule):
+    def __init__(
+        self,
+        lr: float = 3e-4,
+        view_dropout_p: float = 0.3,
+        hidden_dim: int = 512,
+    ):
+        super().__init__()
         self.save_hyperparameters()
 
-        # Load ResNet18
-        backbone = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-        num_filters = backbone.fc.in_features
+        # --- Image encoder (shared across all views) ---
+        backbone = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+        feat_dim = backbone.fc.in_features
+        backbone.fc = nn.Identity()
+        self.encoder = backbone  # outputs (B*V, feat_dim)
 
-        # Remove the final FC layer to use as a feature extractor
-        self.backbone = nn.Sequential(*list(backbone.children())[:-1])
+        # --- View aggregation ---
+        self.pool = AttentionPool(dim=feat_dim)
 
-        if freeze_backbone:
-            for param in self.backbone.parameters():
-                param.requires_grad = False
-
-        # Adding an intermediate layer often helps with mapping complex image features to specific units
-        self.regressor = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(num_filters, 256),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(256, num_outputs)
+        # --- Regression head (5 outputs) ---
+        # Order: calories, mass, fat, carb, protein, num_ingrs(IGNORED)
+        self.head = nn.Sequential(
+            nn.Linear(feat_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.1),
+            nn.Linear(hidden_dim, 5),
         )
 
-        # Loss & Metrics
-        self.criterion = nn.MSELoss()
-        self.train_mae = MeanAbsoluteError()
-        self.val_mae = MeanAbsoluteError()
+        self.lr = lr
+        self.view_dropout_p = view_dropout_p
 
+    def _flatten_views(self, images: torch.Tensor):
+        """
+        Accept:
+          - (B, 4, 5, C, H, W) or
+          - (B, V, C, H, W)
+        Return:
+          - (B, V, C, H, W)
+        """
+        if images.ndim == 6:
+            b, a, f, c, h, w = images.shape
+            return images.view(b, a * f, c, h, w)
+        if images.ndim == 5:
+            return images
+        raise ValueError(f"Unexpected images shape: {images.shape}")
 
-    def forward(self, x):
-        features = self.backbone(x)
-        return self.regressor(features)
-    
-    def _shared_step(self, batch):
-        # Efficiently stack labels
-        x = batch["image"]
-        y = torch.stack([batch[col] for col in NUTRITION_COLUMNS], dim=1).float()
-        
-        preds = self(x)
-        # It's better to scale labels during preprocessing
-        loss = self.criterion(preds, y)
-        return loss, preds, y
+    def _maybe_drop_views(self, images: torch.Tensor):
+        """
+        Randomly drop some views during training to make inference with fewer
+        images robust. Ensures at least 1 view remains per sample.
+        images: (B, V, C, H, W)
+        """
+        if not self.training or self.view_dropout_p <= 0:
+            return images, None
+
+        b, v, c, h, w = images.shape
+        keep = torch.rand(b, v, device=images.device) > self.view_dropout_p
+        # ensure at least one view kept per sample
+        for i in range(b):
+            if not keep[i].any():
+                keep[i, torch.randint(0, v, (1,), device=images.device)] = True
+
+        # Ragged selection per batch item is annoying; simplest is to keep padding
+        # and pass a mask into attention pooling.
+        return images, keep  # mask is (B, V)
+
+    def forward(self, images: torch.Tensor):
+        images = self._flatten_views(images)  # (B, V, C, H, W)
+        images, mask = self._maybe_drop_views(images)
+
+        b, v, c, h, w = images.shape
+        x = images.view(b * v, c, h, w)
+        feats = self.encoder(x)  # (B*V, D)
+        feats = feats.view(b, v, -1)  # (B, V, D)
+
+        dish_feat, attn_w = self.pool(feats, mask=mask)  # (B, D), (B, V)
+        y = self.head(dish_feat)  # (B, 6)
+
+        return y, attn_w
 
     def training_step(self, batch, batch_idx):
-        loss, preds, y = self._shared_step(batch)
-        self.train_mae.update(preds, y)
-        
-        batch_size = batch["image"].size(0)
-        self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch_size)
-        self.log("train_mae", self.train_mae, on_step=False, on_epoch=True, prog_bar=True, batch_size=batch_size)
+        images = batch["images"]
+        targets = torch.stack(
+            [
+                batch["total_calories"],
+                batch["total_mass"],
+                batch["total_fat"],
+                batch["total_carb"],
+                batch["total_protein"],
+                # batch["num_ingrs"].float(),
+            ],
+            dim=1,
+        )  # (B, 5)
+
+        preds, _ = self(images)
+
+        # Huber is robust for regression
+        loss = F.smooth_l1_loss(preds, targets)
+
+        self.log("train/loss", loss, prog_bar=True)
         return loss
-    
+
     def validation_step(self, batch, batch_idx):
-        loss, preds, y = self._shared_step(batch)
-        self.val_mae.update(preds, y)
-        
-        # Store samples for the end-of-epoch summary
-        if batch_idx == 0:
-            self.sample_results = {"preds": preds[:3].detach(), "labels": y[:3].detach()}
-
-        batch_size = batch["image"].size(0)
-        self.log("val_loss", loss, prog_bar=True, on_epoch=True, batch_size=batch_size)
-        self.log("val_mae", self.val_mae, prog_bar=True, on_epoch=True, batch_size=batch_size)
+        images = batch["images"]
+        targets = torch.stack(
+            [
+                batch["total_calories"],
+                batch["total_mass"],
+                batch["total_fat"],
+                batch["total_carb"],
+                batch["total_protein"],
+                # batch["num_ingrs"].float(),
+            ],
+            dim=1,
+        )
+        preds, _ = self(images)
+        loss = F.smooth_l1_loss(preds, targets)
+        self.log("val/loss", loss, prog_bar=True)
         return loss
-
-    def on_validation_epoch_end(self):
-        if not hasattr(self, 'sample_results'):
-            return
-
-        print(f"\n--- Validation Samples (Epoch {self.current_epoch}) ---")
-        p, a = self.sample_results["preds"][0], self.sample_results["labels"][0]
-        
-        print(f"{'Nutrient':<10} | {'Pred':<10} | {'Actual':<10} | {'Diff':<10}")
-        print("-" * 45)
-        for i, name in enumerate(NUTRITION_COLUMNS):
-            diff = p[i] - a[i]
-            print(f"{name.capitalize():<10} | {p[i]:>10.1f} | {a[i]:>10.1f} | {diff:>10.1f}")
-        print("-" * 45 + "\n") 
 
     def configure_optimizers(self):
-        learning_rate = self.hparams.get("lr", 1e-3)
-        optimizer = optim.AdamW(self.parameters(), lr=learning_rate, weight_decay=1e-4)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min', factor=0.5, patience=3
-        )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "monitor": "val_loss",
-            },
-        }
-
-
-if __name__ == "__main__":
-    model = NutritionPredictor()
-    dummy_input = torch.randn(1, 3, 224, 224)
-    output = model(dummy_input)
-    print(f"Input: {dummy_input.shape} -> Output: {output.shape}")
-    print("Example Output:", output)
+        return torch.optim.AdamW(self.parameters(), lr=self.lr)

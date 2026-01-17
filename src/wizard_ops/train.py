@@ -7,14 +7,15 @@ import typer
 from typing import Annotated
 from loguru import logger
 from datetime import datetime
+import albumentations as A
+import hydra
 
-from wizard_ops.data import NutritionDataset, get_default_transforms
-from wizard_ops.model import NutritionPredictor
+from wizard_ops.data import NutritionDataModule, get_default_transforms
+from wizard_ops.model import DishMultiViewRegressor
 
 app = typer.Typer(help="Commands to train nutrition predictor.")
 
 ACCELERATOR = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-
 
 config = {
     "seed": 42,
@@ -23,15 +24,14 @@ config = {
     "max_epochs": 10,
     "camera": "D",
     "num_outputs": 5,
-    "train_val_test_split": (0.7, 0.15, 0.15),
+    "train_val_split": 0.2,
 }
 
 
 @app.command()
-def train(frame_idx: int = 1, 
-          num_workers: int = 4, 
+def train(num_workers: int = 4, 
           fast_dev_run: bool = False,
-          logger_type: Annotated[str, typer.Option(help="Logger to use for training", case_sensitive=False)] = "tensorboard") -> None:
+          logger_type: Annotated[str, typer.Option(help="Logger to use for training", case_sensitive=False)] = "wandb") -> None:
     """
     Train a NutritionPredictor model using the provided dataset and configuration.
 
@@ -49,23 +49,34 @@ def train(frame_idx: int = 1,
     batch_size = config["batch_size"]
     lr = config["lr"]
     max_epochs = config["max_epochs"]
-    camera = config["camera"]
-    num_outputs = config["num_outputs"]
-    train_val_test_split = config["train_val_test_split"]
+    train_val_split = config["train_val_split"]
 
-    transform = get_default_transforms()
-    dataset = NutritionDataset(
-        data_path="src/wizard_ops/data.nosync",
+    val_transform = get_default_transforms(image_size=224)
+
+    train_transform = A.Compose([
+        A.Resize(224, 224),
+        A.HorizontalFlip(p=0.5),  # Data augmentation only for training
+        A.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+        ),
+        A.ToTensorV2(),
+    ])
+
+    val_transform = get_default_transforms(image_size=224)
+    dataset = NutritionDataModule(
+        data_path="data.nosync",
+        dish_csv="src/wizard_ops/metadata/data_stats.csv",
         batch_size=batch_size,
-        frame_idx=frame_idx, 
+        image_size=224,
+        train_transform=train_transform,
+        val_transform=val_transform,
+        normalise_dish_metadata=True,
+        val_split=train_val_split,
         num_workers=num_workers,
-        train_val_test_split=train_val_test_split,
-        camera=camera,
-        transform=transform,
-        seed=seed,
+        use_only_dishes_with_all_cameras=True,
+        seed=seed
     )
-
-    dataset.setup(stage="fit")
 
     # Setup Logger based on user choice
     run_name = f"nutrition_resnet18_{datetime.now().strftime('%m%d_%H%M')}"
@@ -82,17 +93,21 @@ def train(frame_idx: int = 1,
         RichProgressBar(),
         # Saves the best model based on validation loss
         ModelCheckpoint(
-            monitor="val_loss",
+            monitor="val/loss",
             dirpath=f"checkpoints/{run_name}",
-            filename="best-nutrition-{epoch:02d}-{val_loss:.2f}",
+            filename="best-nutrition-{epoch:02d}-{val-loss:.2f}",
             save_top_k=1,
             mode="min",
         ),
-        # Logs the learning rate so you can see the scheduler working
         LearningRateMonitor(logging_interval="step")
     ]
 
-    model = NutritionPredictor(num_outputs=num_outputs, lr=lr, seed=seed)
+    model = DishMultiViewRegressor(
+        lr=lr,
+        view_dropout_p=0.3,
+        hidden_dim=512
+    )
+
     trainer = Trainer(accelerator=ACCELERATOR, 
                       max_epochs=max_epochs, 
                       fast_dev_run=fast_dev_run,
@@ -103,7 +118,8 @@ def train(frame_idx: int = 1,
 )
     logger.info(f"Starting run: {run_name}")
     trainer.fit(model, datamodule=dataset)
-
+    # Save the final model
+    torch.save(model.state_dict(), "models/model.pth")
 
 if __name__ == "__main__":
     app()
