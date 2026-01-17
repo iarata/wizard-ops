@@ -9,6 +9,7 @@ from lightning import Trainer
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint, RichProgressBar
 from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
 from loguru import logger
+from torch.utils.data import DataLoader
 
 from wizard_ops.data import NutritionDataModule, get_default_transforms, NutritionFastDataModule
 from wizard_ops.model import DishMultiViewRegressor
