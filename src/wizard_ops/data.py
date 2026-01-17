@@ -345,24 +345,6 @@ class NutritionDataModule(L.LightningDataModule):
 
 
 if __name__ == "__main__":
-    # Test the DataModule
-    
-    
-    # Custom transforms with augmentation for training only
-    # train_transform = A.Compose([
-    #     A.Resize(224, 224),
-    #     A.HorizontalFlip(p=0.5),
-    #     A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    #     A.ToTensorV2(),
-    # ])
-
-    # data_module = NutritionDataModule(
-    #     data_path="data.nosync",
-    #     dish_csv="path/to/csv",
-    #     train_transform=train_transform,
-    #     val_transform=get_default_transforms(224),
-    # )
-    
     train_transform = A.Compose([
         A.Resize(224, 224),
         A.HorizontalFlip(p=0.5),
