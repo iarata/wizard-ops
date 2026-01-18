@@ -11,7 +11,7 @@ from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
 from loguru import logger
 from torch.utils.data import DataLoader
 
-from wizard_ops.data import NutritionDataModule, get_default_transforms, NutritionFastDataModule
+from wizard_ops.data import NutritionDataModule, NutritionFastDataModule, get_default_transforms
 from wizard_ops.model import DishMultiViewRegressor
 
 app = typer.Typer(help="Commands to train nutrition predictor.")

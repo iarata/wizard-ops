@@ -4,7 +4,7 @@ import lightning as L
 import numpy as np
 import torch
 import typer
-from data import NutritionDataModule, get_default_transforms, denormalize
+from data import NutritionDataModule, denormalize, get_default_transforms
 from model import DishMultiViewRegressor
 from PIL import Image
 

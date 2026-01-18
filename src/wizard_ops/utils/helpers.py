@@ -1,9 +1,9 @@
 import json
-import torch
 import logging
 from pathlib import Path
 
 import albumentations as A
+import torch
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
