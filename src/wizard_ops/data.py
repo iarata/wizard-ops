@@ -11,7 +11,7 @@ import torch
 from albumentations.pytorch import ToTensorV2
 from torch.utils.data import DataLoader, Dataset
 
-from wizard_ops.utils.helpers import (
+from wizard_ops.utils import (
     get_augmentation_transforms,
     get_default_transforms,
     load_normalization_stats,
@@ -31,14 +31,14 @@ TARGET_COLUMNS = [
     "total_protein",
 ]
 
-NormalizationMethod = Literal["zscore", "minmax", "max", "none"]
+NormalisationMethod = Literal["zscore", "minmax", "max", "none"]
 
 
 class TargetNormaliser:
     def __init__(
         self,
         stats: dict,
-        method: NormalizationMethod = "zscore",
+        method: NormalisationMethod = "zscore",
     ):
         self.method = method
         self.target_stats = (stats or {}).get("targets", {})
@@ -87,7 +87,7 @@ class Nutrition(Dataset):
         h5_path: str | Path,
         dish_csv: str | Path,
         transform: A.Compose | None = None,
-        normalization_method: NormalizationMethod = "zscore",
+        normalization_method: NormalisationMethod = "zscore",
         normalization_stats: dict | None = None,
     ):
         """Initialize the HDF5 dataset.
@@ -266,7 +266,7 @@ class NutritionDataModule(L.LightningDataModule):
         batch_size: int = 32,
         train_transform: A.Compose | None = None,
         val_transform: A.Compose | None = None,
-        normalization_method: NormalizationMethod = "zscore",
+        normalization_method: NormalisationMethod = "zscore",
         val_split: float = 0.2,
         num_workers: int = 4,
         seed: int = 42,

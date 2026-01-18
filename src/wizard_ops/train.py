@@ -11,7 +11,7 @@ from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
 from loguru import logger
 from torch.utils.data import DataLoader
 
-from wizard_ops.data import NutritionDataModule, NutritionFastDataModule, get_default_transforms
+from wizard_ops.data import NutritionDataModule, get_default_transforms
 from wizard_ops.model import DishMultiViewRegressor
 
 app = typer.Typer(help="Commands to train nutrition predictor.")
@@ -56,7 +56,7 @@ def train(num_workers: int = 4,
 
     train_transform = A.Compose([
         A.Resize(224, 224),
-        A.HorizontalFlip(p=0.5),  # Data augmentation only for training
+        A.HorizontalFlip(p=0.5),
         A.Normalize(
             mean=[0.485, 0.456, 0.406],
             std=[0.229, 0.224, 0.225],
@@ -64,21 +64,7 @@ def train(num_workers: int = 4,
         A.ToTensorV2(),
     ])
 
-    val_transform = get_default_transforms(image_size=224)
-    # dataset = NutritionDataModule(
-    #     data_path="data.nosync",
-    #     dish_csv="src/wizard_ops/metadata/data_stats.csv",
-    #     batch_size=batch_size,
-    #     image_size=224,
-    #     train_transform=train_transform,
-    #     val_transform=val_transform,
-    #     normalise_dish_metadata=True,
-    #     val_split=train_val_split,
-    #     num_workers=num_workers,
-    #     use_only_dishes_with_all_cameras=True,
-    #     seed=seed
-    # )
-    dataset = NutritionFastDataModule(
+    dataset = NutritionDataModule(
         h5_path="data.nosync/images_224.h5",
         dish_csv="configs/metadata/data_stats.csv",
         batch_size=batch_size,

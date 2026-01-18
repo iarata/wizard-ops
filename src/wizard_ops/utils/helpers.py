@@ -10,8 +10,8 @@ logger.setLevel(logging.INFO)
 
 # Path to normalisation stats JSON file (relative to project root)
 # Goes up from src/wizard_ops/data.py -> src/wizard_ops -> src -> project_root -> configs/metadata
-NORMALIZATION_STATS_PATH = Path(__file__).parent.parent.parent.parent / "configs" / "metadata" / "normalization_stats.json"
-# NORMALIZATION_STATS_PATH = Path("/Users/arata/Desktop/DTU HCAI/Kurser/Winter_2026/wizard_ops/configs/metadata/normalization_stats.json")
+NORMALIZATION_STATS_PATH = Path(__file__).parent.parent.parent.parent / "configs" / "metadata" / "normalisation_stats.json"
+# NORMALIZATION_STATS_PATH = Path("/Users/arata/Desktop/DTU HCAI/Kurser/Winter_2026/wizard_ops/configs/metadata/normalisation_stats.json")
 
 
 # MARK: - Loads normalisation stats
