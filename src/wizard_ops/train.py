@@ -58,7 +58,7 @@ def train(
         prefetch_factor=config["data"].get("prefetch_factor", 2),
     )
 
-    run_name = f"nutrition_{config["model"]["backbone"]}_{datetime.now().strftime('%m%d_%H%M')}"
+    run_name = f"nutrition_{config['model']['backbone']}_{datetime.now().strftime('%m%d_%H%M')}"
     logger_type = config["logging"]["type"].lower()
     if logger_type == "tensorboard":
         train_logger = TensorBoardLogger(save_dir="logs", name=run_name)
@@ -67,9 +67,7 @@ def train(
             project="nutrition-predictor", name=run_name, log_model="all"
         )
     else:
-        raise typer.BadParameter(
-            f"Invalid logger_type: {logger_type}. Must be 'tensorboard' or 'wandb'."
-        )
+        raise ValueError(f"Unsupported logger type: {logger_type}")
 
     callbacks = [
         RichProgressBar(),
