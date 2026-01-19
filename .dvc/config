@@ -1,4 +1,0 @@
-[core]
-    remote = wiz3
-['remote "wiz3"']
-    url = s3://wizops-nutrition
