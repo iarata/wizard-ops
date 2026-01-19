@@ -1,9 +1,9 @@
 import pytest
 import torch
 import torch.nn as nn
-
 import wizard_ops.model as model_mod
 from wizard_ops.model import DishMultiViewRegressor
+
 
 def test_forward_shape():
     model = DishMultiViewRegressor(
