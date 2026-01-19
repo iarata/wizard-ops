@@ -1,0 +1,51 @@
+{
+  "description": "Normalization statistics computed from the full dataset. Use these values to denormalize model predictions back to real units.",
+  "computed_from": "data_stats.csv",
+  "num_samples": 4793,
+  "targets": {
+    "total_calories": {
+      "unit": "kcal",
+      "mean": 212.90949349906114,
+      "std": 312.6959554643893,
+      "min": 0.0,
+      "max": 9485.81543
+    },
+    "total_mass": {
+      "unit": "grams",
+      "mean": 188.03567702900062,
+      "std": 272.8570094390207,
+      "min": 1.0,
+      "max": 7975.0
+    },
+    "total_fat": {
+      "unit": "grams",
+      "mean": 10.720238588983936,
+      "std": 24.867315716836455,
+      "min": 0.0,
+      "max": 875.541016
+    },
+    "total_carb": {
+      "unit": "grams",
+      "mean": 16.972498285207596,
+      "std": 29.063958843448784,
+      "min": 0.0,
+      "max": 844.568604
+    },
+    "total_protein": {
+      "unit": "grams",
+      "mean": 14.429779191112038,
+      "std": 18.659129881818828,
+      "min": 0.0,
+      "max": 147.491821
+    }
+  },
+  "image_normalization": {
+    "description": "ImageNet normalization used for pretrained backbones",
+    "mean": [0.485, 0.456, 0.406],
+    "std": [0.229, 0.224, 0.225]
+  },
+  "usage": {
+    "normalize": "normalized_value = (raw_value - mean) / std",
+    "denormalize": "raw_value = normalized_value * std + mean"
+  }
+}

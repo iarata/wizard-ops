@@ -1,7 +1,8 @@
 docs/site/
 raw_data.nosync
 data_old.nosync/
-
+.ruff_cache/
+.dvc/
 #logging
 lightning_logs/
 logs/
