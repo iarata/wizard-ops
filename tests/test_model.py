@@ -7,7 +7,8 @@ from wizard_ops.model import DishMultiViewRegressor
 
 def test_forward_shape():
     model = DishMultiViewRegressor(
-        backbone="dinov3_small",
+        # backbone="dinov3_small",
+        backbone="resnet18",
         image_size=64,
         freeze_encoder=False,
         lr=1e-3,
