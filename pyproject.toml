@@ -24,6 +24,7 @@ requires-python = ">=3.12"
 dependencies = [
     "albumentationsx>=2.0.13",
     "datasets>=4.4.2",
+    "dvc-gs>=3.0.2",
     "fastapi==0.115.6",
     "google-api-python-client>=2.188.0",
     "h5py>=3.15.1",
