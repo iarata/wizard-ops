@@ -93,7 +93,7 @@ def test_nutrition_builds_index_and_filters_metadata(
 		h5_path=h5_path,
 		dish_csv=csv_path,
 		transform=None,
-		normalization_method="zscore",
+		normalisation_method="zscore",
 		normalization_stats=normalization_stats,
 	)
 
@@ -113,7 +113,7 @@ def test_nutrition_getstate_clears_h5_handle(
 	ds = Nutrition(
 		h5_path=h5_path,
 		dish_csv=csv_path,
-		normalization_method="zscore",
+		normalisation_method="zscore",
 		normalization_stats=normalization_stats,
 	)
 	_ = ds._get_h5()
@@ -132,7 +132,7 @@ def test_nutrition_get_example_imagenet_normalize_default(
 		h5_path=h5_path,
 		dish_csv=csv_path,
 		transform=None,
-		normalization_method="zscore",
+		normalisation_method="zscore",
 		normalization_stats=normalization_stats,
 	)
 
@@ -161,7 +161,7 @@ def test_nutrition_transform_path_uses_apply_transform(
 		h5_path=h5_path,
 		dish_csv=csv_path,
 		transform=None,
-		normalization_method="zscore",
+		normalisation_method="zscore",
 		normalization_stats=normalization_stats,
 	)
 
@@ -180,7 +180,7 @@ def test_nutrition_subset_applies_own_transform(
 		h5_path=h5_path,
 		dish_csv=csv_path,
 		transform=None,
-		normalization_method="zscore",
+		normalisation_method="zscore",
 		normalization_stats=normalization_stats,
 	)
 
@@ -215,7 +215,7 @@ def test_datamodule_setup_and_dataloaders(
 		batch_size=2,
 		train_transform=tf,
 		val_transform=tf,
-		normalization_method="zscore",
+		normalisation_method="zscore",
 		val_split=0.5,
 		num_workers=0,
 		seed=0,

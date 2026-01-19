@@ -87,7 +87,7 @@ class Nutrition(Dataset):
         h5_path: str | Path,
         dish_csv: str | Path,
         transform: A.Compose | None = None,
-        normalization_method: NormalisationMethod = "zscore",
+        normalisation_method: NormalisationMethod = "zscore",
         normalization_stats: dict | None = None,
     ):
         """Initialize the HDF5 dataset.
@@ -97,7 +97,7 @@ class Nutrition(Dataset):
             dish_csv: Path to the CSV file with dish metadata.
             transform: Albumentations transform to apply (for augmentation only,
                       resizing is already done in preprocessing).
-            normalization_method: How to normalize targets ('zscore', 'minmax', 'max').
+            normalisation_method: How to normalize targets ('zscore', 'minmax', 'max').
             normalization_stats: Pre-computed stats dict, or loads from default file.
         """
         self.h5_path = Path(h5_path)
@@ -105,7 +105,7 @@ class Nutrition(Dataset):
         self.transform = transform
 
         stats = normalization_stats if normalization_stats is not None else load_normalization_stats()
-        self.normaliser = TargetNormaliser(stats=stats, method=normalization_method)
+        self.normaliser = TargetNormaliser(stats=stats, method=normalisation_method)
         self.norm_stats = stats  # keep for backwards-compat / external access
 
         self.metadata = pd.read_csv(self.dish_csv, dtype={"dish_id": str})
@@ -244,9 +244,8 @@ class NutritionSubset(Dataset):
 class NutritionDataModule(L.LightningDataModule):
     """Lightning DataModule using pre-processed HDF5 images.
     
-    This DataModule is optimized for:
-    1. Using pre-resized images stored in HDF5 format
-    2. Using z-score normalization with pre-computed stats
+    1. Uses pre-resized images stored in HDF5 format
+    2. Defaults z-score normalization with pre-computed stats
     3. Optimized data loading with prefetching
     
     Before using this module, preprocess images with:
@@ -266,7 +265,7 @@ class NutritionDataModule(L.LightningDataModule):
         batch_size: int = 32,
         train_transform: A.Compose | None = None,
         val_transform: A.Compose | None = None,
-        normalization_method: NormalisationMethod = "zscore",
+        normalisation_method: NormalisationMethod = "zscore",
         val_split: float = 0.2,
         num_workers: int = 4,
         seed: int = 42,
@@ -280,7 +279,7 @@ class NutritionDataModule(L.LightningDataModule):
             batch_size: Training batch size.
             train_transform: Training augmentation transform.
             val_transform: Validation transform (usually no augmentation).
-            normalization_method: How to normalize targets ('zscore', 'minmax', 'max').
+            normalisation_method: How to normalize targets ('zscore', 'minmax', 'max').
             val_split: Fraction of data to use for validation.
             num_workers: Number of data loading workers.
             seed: Random seed for reproducibility.
@@ -292,7 +291,7 @@ class NutritionDataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.train_transform = train_transform
         self.val_transform = val_transform
-        self.normalization_method = normalization_method
+        self.normalisation_method = normalisation_method
         self.val_split = val_split
         self.num_workers = num_workers
         self.seed = seed
@@ -309,7 +308,7 @@ class NutritionDataModule(L.LightningDataModule):
             h5_path=self.h5_path,
             dish_csv=self.dish_csv,
             transform=None,  # transforms are applied by subset wrappers
-            normalization_method=self.normalization_method,
+            normalisation_method=self.normalisation_method,
         )
 
         n = len(self._full_dataset)
@@ -379,7 +378,7 @@ if __name__ == "__main__":
         batch_size=32,
         train_transform=train_transform,
         val_transform=val_transform,
-        normalization_method="zscore",
+        normalisation_method="zscore",
         val_split=0.2,
         num_workers=9,
         seed=42,

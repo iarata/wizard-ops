@@ -12,11 +12,12 @@ data:
   num_workers: 9
 
 model:
-  backbone: "resnet18" # options: resnet18, resnet50, efficientnet_b0, efficientnet_b4, convnext_tiny, convnext_small, dinov3_small, dinov3_base, dinov3_large
+  backbone: "resnet18" # options: resnet18, resnet50, efficientnet_b0, efficientnet_b3, convnext_tiny, convnext_small, dinov3_small, dinov3_base, dinov3_large
   pretrained: true
   freeze_encoder: false
   attention_pooling: true
   head_dropout_p: 0.5
+  view_dropout_p: 0.2
   hidden_dim: 512
 
   
@@ -26,11 +27,14 @@ train:
   weight_decay: 1e-4
   loss: "mse" # options: "mse", "smoothl1", "huber"
   max_epochs: 10
-  gpus: 1
+  devices: None
   precision: 32 # 32-true, bf16-mixed, 32, 16
   accelerator: "auto" # options: "auto", "gpu", "cpu", "tpu", "ipu"
   checkpoint_dir: "checkpoints/"
-  experiment_name: "nutrition_prediction_experiment"
+  log_every_n_steps: 50
+  log_wandb_examples: true
+  
+  fast_dev_run: true
 
 logging:
   type: "wandb" # options: "tensorboard", "wandb"
