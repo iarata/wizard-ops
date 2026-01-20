@@ -2,8 +2,11 @@ docs/site/
 raw_data.nosync
 data_old.nosync/
 .ruff_cache/
-.dvc/
 uv.lock
+
+.dvc/cache
+.dvc/tmp/
+
 #logging
 lightning_logs/
 logs/
@@ -188,3 +191,4 @@ wandb/
 
 
 evaluate_comparison.py
+/checkpoints

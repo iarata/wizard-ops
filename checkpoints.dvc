@@ -1,0 +1,12 @@
+outs:
+- hash: md5
+  path: checkpoints
+  files:
+  - relpath: 
+      nutrition_resnet18_0115_1951/best-nutrition-epoch=04-val-loss=0.00.ckpt
+    md5: c4420e4f1e84c61580075c1695ffe654
+    size: 137443957
+    cloud:
+      dtu_kfc_gs:
+        etag: 08bacccb9ee49892031001
+        version_id: '1768866238883386'

@@ -1,6 +1,18 @@
 outs:
-- md5: 89a28739df0aa22fc2681fe67159597f.dir
-  size: 6431138386
-  nfiles: 54848
-  hash: md5
+- hash: md5
   path: data.nosync
+  files:
+  - relpath: .DS_Store
+    md5: 20378ba347e49a0093836681915f7977
+    size: 14340
+    cloud:
+      dtu_kfc_gs:
+        etag: 0889d9fb94e49892031001
+        version_id: '1768866218699913'
+  - relpath: images_224.h5
+    md5: e5c0953f3a93c0e843674cc785629193
+    size: 10625929764
+    cloud:
+      dtu_kfc_gs:
+        etag: 08cccdf494e49892031001
+        version_id: '1768866218583756'
