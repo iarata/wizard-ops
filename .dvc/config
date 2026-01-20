@@ -2,4 +2,4 @@
     remote = dtu_kfc_gs
 ['remote "dtu_kfc_gs"']
     url = gs://dtu-kfc-bucket/
-    version_aware = true
+    version_aware = false
