@@ -3,7 +3,8 @@ raw_data.nosync
 data_old.nosync/
 .ruff_cache/
 uv.lock
-
+*.ckpt
+*.pth
 .dvc/cache
 .dvc/tmp/
 
