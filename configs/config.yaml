@@ -30,7 +30,7 @@ train:
   devices: None
   precision: 32 # 32-true, bf16-mixed, 32, 16
   accelerator: "auto" # options: "auto", "gpu", "cpu", "tpu", "ipu"
-  checkpoint_dir: "models/"
+  checkpoint_dir: "checkpoints/"
   log_every_n_steps: 50
   log_wandb_examples: true
   
