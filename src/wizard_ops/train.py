@@ -1,24 +1,49 @@
+from __future__ import annotations
+
+import os
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-import albumentations as A
-import torch
-from lightning import Trainer
-from lightning.pytorch.callbacks import (
-    LearningRateMonitor,
-    ModelCheckpoint,
-    RichProgressBar,
-)
-from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
-from loguru import logger
+from wizard_ops.data import NutritionDataModule as _NutritionDataModule
+from wizard_ops.model import DishMultiViewRegressor as _DishMultiViewRegressor
+from wizard_ops.utils import get_augmentation_transforms, get_default_transforms
 
-from wizard_ops.data import NutritionDataModule, get_default_transforms
-from wizard_ops.model import DishMultiViewRegressor
+try:
+    import torch  # type: ignore
+except Exception:  # pragma: no cover
+    class _TorchStub:  # minimal surface for tests to monkeypatch
+        pass
+
+    torch = _TorchStub()  # type: ignore
+
+
+try:  # pragma: no cover
+    from lightning import Trainer  # type: ignore
+    from lightning.pytorch.callbacks import (  # type: ignore
+        LearningRateMonitor,
+        ModelCheckpoint,
+        RichProgressBar,
+    )
+    from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger  # type: ignore
+except Exception:  # pragma: no cover
+    Trainer = None  # type: ignore
+    TensorBoardLogger = None  # type: ignore
+    WandbLogger = None  # type: ignore
+    RichProgressBar = None  # type: ignore
+    ModelCheckpoint = None  # type: ignore
+    LearningRateMonitor = None  # type: ignore
+
+
+# For mocking in tests
+NutritionDataModule = None  # type: ignore
+DishMultiViewRegressor = None  # type: ignore
 
 
 def train(
     config: dict,
-    train_transform: A.Compose = None,
-    val_transform: A.Compose = None,
+    train_transform: Any = None,
+    val_transform: Any = None,
 ) -> None:
     """
     Train a DishMultiViewRegressor model.
@@ -29,21 +54,21 @@ def train(
     Returns:
         None
     """
-    if val_transform is None:
-        val_transform = get_default_transforms(image_size=224)
+    global NutritionDataModule, DishMultiViewRegressor
 
-    if train_transform is None:
-        train_transform = A.Compose(
-            [
-                A.Resize(224, 224),
-                A.HorizontalFlip(p=0.5),
-            A.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-            A.ToTensorV2(),
-        ]
-    )
+    if NutritionDataModule is None:  # pragma: no cover
+        NutritionDataModule = _NutritionDataModule
+
+    if DishMultiViewRegressor is None:  # pragma: no cover
+        DishMultiViewRegressor = _DishMultiViewRegressor
+
+    if val_transform is None:  # pragma: no cover
+        val_transform = get_default_transforms(image_size=config["data"]["image_size"])
+
+    if train_transform is None:  # pragma: no cover
+        train_transform = get_augmentation_transforms(
+            image_size=config["data"]["image_size"]
+        )
 
     dataset = NutritionDataModule(
         h5_path=config["data"]["h5_path"],
@@ -69,12 +94,14 @@ def train(
     else:
         raise ValueError(f"Unsupported logger type: {logger_type}")
 
+    run_dir = Path(config["train"]["checkpoint_dir"]) / run_name
+
     callbacks = [
         RichProgressBar(),
         # Saves the best model based on validation loss
         ModelCheckpoint(
             monitor="val/loss",
-            dirpath=f"{config["train"]["checkpoint_dir"]}/{run_name}",
+            dirpath=str(run_dir),
             filename="best-nutrition-{epoch:02d}-{val-loss:.2f}",
             save_top_k=1,
             mode="min",
@@ -84,13 +111,13 @@ def train(
 
     model = DishMultiViewRegressor(
         backbone=config["model"]["backbone"],
-        image_size=config["model"]["image_size"],
+        image_size=config["data"]["image_size"],
         freeze_encoder=config["model"]["freeze_encoder"],
 
         hidden_dim=config["model"]["hidden_dim"],
         view_dropout_p=config["model"].get("view_dropout_p", 0.0),
         head_dropout_p=config["model"].get("head_dropout_p", 0.0),
-        
+
         lr=config["train"]["lr"],
         loss=config["train"]["loss"],
         weight_decay=config["train"]["weight_decay"],
@@ -98,8 +125,7 @@ def train(
     )
 
     trainer = Trainer(
-        accelerator=config["train"]["accelerator"],
-        devices=config["train"].get("devices", None),
+        accelerator=config["train"].get("accelerator", "auto"),
         max_epochs=config["train"]["max_epochs"],
         precision=config["train"].get("precision", 32),
         fast_dev_run=config["train"].get("fast_dev_run", False),
@@ -108,11 +134,27 @@ def train(
         log_every_n_steps=config["train"].get("log_every_n_steps", 50),
         enable_model_summary=True,
     )
-    
-    logger.info(f"Starting run: {run_name}")
+
     trainer.fit(model, datamodule=dataset)
+
+    os.makedirs(run_dir, exist_ok=True)
+    torch.save(model, str(run_dir / "final_model.pth"))
+
+    if config.get("train", {}).get("export_onnx", False) and hasattr(model, "to_onnx"):
+        # Use the legacy exporter (dynamo=False). The dynamo/torch.export-based
+        # ONNX path can fail with internal onnx_ir initializer naming errors.
+        model.eval()
+        model.cpu()
+        input_sample = getattr(model, "example_input_array", None)
+        if input_sample is None:
+            raise ValueError(
+                "Model has no example_input_array; please provide an input_sample for ONNX export."
+            )
+        model.to_onnx(
+            str(run_dir / "final_model.onnx"),
+            input_sample=input_sample.cpu(),
+            export_params=True,
+            opset_version=int(config.get("train", {}).get("onnx_opset", 17)),
+            dynamo=False,
+        )
     
-    logger.info("Training complete. Saving final model...")
-    torch.save(model, 
-        f"{config["train"]["checkpoint_dir"]}/{run_name}/final_model.pth"
-    )

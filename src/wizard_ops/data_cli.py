@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 from pathlib import Path
@@ -6,8 +8,22 @@ from typing import Annotated
 import kagglehub as kh
 import pandas as pd
 import typer
+from omegaconf import DictConfig
+from typer.main import get_command
 
-app = typer.Typer(help="Commands to manage the Nutrition dataset")
+app = typer.Typer(help="Dataset utilities")
+
+_DATA_ARGV: list[str] = []
+
+
+def set_data_argv(argv: list[str]) -> None:
+    global _DATA_ARGV
+    _DATA_ARGV = argv
+    
+@app.callback()
+def _data_root(ctx: typer.Context) -> None:
+    # cfg will be injected via Click obj (see run_data_cli)
+    pass
 
 # Path to metadata files
 METADATA_DIR = "src/wizard_ops/metadata/"
@@ -77,17 +93,18 @@ def load_dish_metadata(
 
         return pd.DataFrame(rows, columns=_DISH_TOTAL_COLUMNS)
 
-    return pd.concat([
-        _read_totals(cafe1_path),
-        _read_totals(cafe2_path),
-    ], ignore_index=True)
+    return pd.concat(
+        [
+            _read_totals(cafe1_path),
+            _read_totals(cafe2_path),
+        ],
+        ignore_index=True,
+    )
 
 
 def load_ingredients_metadata(path: str | Path = INGREDIENTS_METADATA) -> pd.DataFrame:
     """Load ingredient-level metadata."""
     return pd.read_csv(path)
-
-
 
 
 # MARK: - Typer CLI commands to download the dataset from Kaggle
@@ -99,35 +116,41 @@ def download(dir: Annotated[str, typer.Option("--dir", "-d", help="Directory to 
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
             kh_path = kh.dataset_download(
-                "zygmuntyt/nutrition5k-dataset-side-angle-images",                
+                "zygmuntyt/nutrition5k-dataset-side-angle-images",
             )
             os.rename(kh_path, path)
-            
+
+        typer.echo(f"Dataset downloaded to {dir}")
     except Exception as e:
-        print(f"Error downloading dataset: {e}")
-    return path
-    typer.echo(f"Dataset downloaded to {dir}")
-    
+        typer.echo(f"Error downloading dataset: {e}")
+        raise typer.Exit(code=1) from e
+
+
 # MARK: - CLI to generate unified dish metadata CSV/parquet
 @app.command("generate-metadata")
 def generate_metadata(
     data_dir: Annotated[str, typer.Option("--data-dir", "-d", help="Directory where the dataset is stored")],
     output_dir: Annotated[str, typer.Option("--output-dir", "-o", help="Output directory for the unified metadata file")],
-    cleanup: Annotated[bool, typer.Option("--cleanup", "-c", help="Whether to preprocess the metadata before saving")] = True,
+    cleanup: Annotated[
+        bool,
+        typer.Option("--cleanup", "-c", help="Whether to preprocess the metadata before saving"),
+    ] = True,
     frame: Annotated[str, typer.Option("--frame", "-f", help="Frame type to save (e.g., 'A', 'B' ...)")] = "A",
-    max_imgs_per_frame: Annotated[int, typer.Option("--max-imgs-per-frame", "-m", help="Maximum number of images per frame type to consider")] = 2,
+    max_imgs_per_frame: Annotated[
+        int,
+        typer.Option("--max-imgs-per-frame", "-m", help="Maximum number of images per frame type to consider"),
+    ] = 2,
 ):
-    
     data_path = Path(data_dir)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     dishes_available_data = []
     for dish_dir in data_path.iterdir():
         if dish_dir.is_dir():
             dishes_available_data.append(dish_dir.name)
     print(f"Found {len(dishes_available_data)} dishes with available data.")
-    
+
     # Load dish-level totals and computed ingredient count.
     # (The raw dish metadata CSVs are ragged and cannot be parsed by pandas' default CSV reader.)
     dish_meta = load_dish_metadata()
@@ -135,7 +158,7 @@ def generate_metadata(
 
     unified = dish_meta[dish_meta["dish_id"].isin(dishes_available_data)].reset_index(drop=True)
     print(f"Unified metadata shape after filtering: {unified.shape}")
-    
+
     # When frame is set, go through all dishes' folder in data_path and check if the specified frame type exists.
     # Sample check data.nosync/dish_1576258657/frames_sampled30/camera_A_frame_001.jpeg -> frame type A
     # When -m is set the dish must have exactly that number of images for the specified frame type.
@@ -146,65 +169,61 @@ def generate_metadata(
             if not dish_dir.exists():
                 continue
             frame_images = [
-                img_file for img_file in dish_dir.iterdir()
+                img_file
+                for img_file in dish_dir.iterdir()
                 if re.match(rf"camera_{frame}_.*\.jpeg$", img_file.name)
             ]
             if len(frame_images) == max_imgs_per_frame:
                 valid_dish_ids.append(dish_id)
-                
-        
+
         unified = unified[unified["dish_id"].isin(valid_dish_ids)].reset_index(drop=True)
         print(f"Unified metadata shape after filtering for frame {frame}: {unified.shape}")
 
     output_file = output_path / f"dish_metadata_{frame}.csv"
     unified.to_csv(output_file, index=False)
     print(f"Saved unified dish metadata to: {output_file}")
-    
-    
-    
+
+
 @app.command("stats")
 def get_data_stats(
     data_dir: Annotated[str, typer.Option("--data-dir", "-d", help="Directory where the dataset is stored")],
-    save_path: Annotated[str, typer.Option("--save-path", "-s", help="Path to save the stats DataFrame as CSV")] = "data_stats.csv",
+    save_path: Annotated[
+        str,
+        typer.Option("--save-path", "-s", help="Path to save the stats DataFrame as CSV"),
+    ] = "data_stats.csv",
 ):
-    """
-    Get a pandas frame of the dataset with columns of _DISH_TOTAL_COLUMNS + "num_images_camera_{A..D}"
-
-    Args:
-        data_dir (Annotated[str, typer.Option, optional): _description_. Defaults to "Directory where the dataset is stored")].
-    """
+    """Compute basic dataset stats and save to CSV."""
     data_path = Path(data_dir)
-    
+
     dish_meta = load_dish_metadata()
     print(f"Loaded dish metadata with shape: {dish_meta.shape}")
-    
+
     stats_rows = []
-    for idx, row in dish_meta.iterrows():
+    for _, row in dish_meta.iterrows():
         dish_id = row["dish_id"]
         dish_dir = data_path / dish_id
         if not dish_dir.exists():
             continue
-        
-        image_counts = {f"num_images_camera_{cam}": 0 for cam in ['A', 'B', 'C', 'D']}
+
+        image_counts = {f"num_images_camera_{cam}": 0 for cam in ["A", "B", "C", "D"]}
         for img_file in dish_dir.iterdir():
-            for cam in ['A', 'B', 'C', 'D']:
+            for cam in ["A", "B", "C", "D"]:
                 if re.match(rf"camera_{cam}_.*\.jpeg$", img_file.name):
                     image_counts[f"num_images_camera_{cam}"] += 1
-                    
+
         stats_row = row.to_dict()
         stats_row.update(image_counts)
         stats_rows.append(stats_row)
-        
+
     stats_df = pd.DataFrame(stats_rows)
     print(f"Dataset stats shape: {stats_df.shape}")
     print(stats_df.head())
-    
+
     stats_df.to_csv(save_path, index=False)
     print(f"Saved dataset stats to: {save_path}")
-    
+
     return stats_df
-    
-    
+
 
 if __name__ == "__main__":
     app()

@@ -1,9 +1,3 @@
-# tests/test_train.py
-# Adjust IMPORT_PATH if your train() lives somewhere else (e.g. wizard_ops.train).
-#
-# These tests are "unit" tests: they do NOT run real training. They monkeypatch
-# Lightning Trainer, loggers, datamodule, model, and torch.save.
-
 from __future__ import annotations
 
 import importlib
