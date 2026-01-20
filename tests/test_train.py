@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-
 # IMPORT_PATH = os.getenv("TRAIN_IMPORT_PATH", "train")
 from wizard_ops import train as train_mod
+
 IMPORT_PATH = "wizard_ops.train"
 
 
