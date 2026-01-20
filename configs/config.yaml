@@ -20,8 +20,6 @@ model:
   view_dropout_p: 0.2
   hidden_dim: 512
 
-  
-
 train:
   lr: 1e-2
   weight_decay: 1e-4
@@ -35,6 +33,9 @@ train:
   log_wandb_examples: true
   
   fast_dev_run: true
+
+evaluate:
+  
 
 logging:
   type: "wandb" # options: "tensorboard", "wandb"
