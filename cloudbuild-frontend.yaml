@@ -1,14 +1,18 @@
+substitutions:
+  _SERVICE_NAME: streamlit-app
+  _TAG: latest
+
 steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '-f'
-      - 'dockerfiles/Dockerfile.frontend'
+      - 'dockerfiles/frontend.dockerfile'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/streamlit-app:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:${_TAG}'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/streamlit-app:latest'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'
       - '.'
 images:
-  - 'gcr.io/$PROJECT_ID/streamlit-app:$SHORT_SHA'
-  - 'gcr.io/$PROJECT_ID/streamlit-app:latest'
+  - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:${_TAG}'
+  - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'

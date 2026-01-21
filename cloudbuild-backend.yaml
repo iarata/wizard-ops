@@ -1,14 +1,18 @@
+substitutions:
+  _SERVICE_NAME: wizard-ops-api
+  _TAG: latest
+
 steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '-f'
-      - 'dockerfiles/Dockerfile.backend'
+      - 'dockerfiles/api.dockerfile'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/fastapi-app:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:${_TAG}'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/fastapi-app:latest'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'
       - '.'
 images:
-  - 'gcr.io/$PROJECT_ID/fastapi-app:$SHORT_SHA'
-  - 'gcr.io/$PROJECT_ID/fastapi-app:latest'
+  - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:${_TAG}'
+  - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'

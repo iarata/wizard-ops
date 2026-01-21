@@ -41,12 +41,13 @@ jobs:
           gcloud builds submit \
             --config cloudbuild-backend.yaml \
             --project ${{ env.PROJECT_ID }} \
+            --substitutions=_SERVICE_NAME=${{ env.BACKEND_SERVICE }},_TAG=${GITHUB_SHA::7} \
             .
 
       - name: Deploy Backend to Cloud Run
         run: |
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
-            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:$GITHUB_SHA \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${GITHUB_SHA::7} \
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
             --memory 2Gi \
@@ -87,12 +88,13 @@ jobs:
           gcloud builds submit \
             --config cloudbuild-frontend.yaml \
             --project ${{ env.PROJECT_ID }} \
+            --substitutions=_SERVICE_NAME=${{ env.FRONTEND_SERVICE }},_TAG=${GITHUB_SHA::7} \
             .
 
       - name: Deploy Frontend to Cloud Run
         run: |
           gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
-            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:$GITHUB_SHA \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${GITHUB_SHA::7} \
             --region ${{ env.REGION }} \
             --project ${{ env.PROJECT_ID }} \
             --set-env-vars WIZARD_BACKEND=${{ needs.deploy-backend.outputs.backend_url }}
