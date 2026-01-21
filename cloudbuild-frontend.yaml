@@ -16,3 +16,6 @@ steps:
 images:
   - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:${_TAG}'
   - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'
+
+options:
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
