@@ -4,8 +4,9 @@ from pathlib import Path
 
 import albumentations as A
 import hydra
+import lightning as L
 from loguru import logger
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from wizard_ops.train import train
 
@@ -18,6 +19,7 @@ _CONFIG_DIR = (Path(__file__).resolve().parents[2] / "configs").as_posix()
     config_name="config",
 )
 def main(cfg: DictConfig) -> None:
+    L.seed_everything(cfg.seed, workers=True)
     if cfg.mode == "train":
         logger.info("Starting training...")
         train_transforms = A.Compose([
