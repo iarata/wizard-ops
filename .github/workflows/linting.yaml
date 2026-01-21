@@ -21,6 +21,7 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
+          cache-dependency-glob: "pyproject.toml"  # Error: No file matched to [**/uv.lock], make sure you have checked out the target repository
 
       - name: Set up Python
         run: uv python install
