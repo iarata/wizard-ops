@@ -136,7 +136,7 @@ def test_predict_nutrition_outputs_5_metrics_and_denormalizes(monkeypatch):
     images = torch.zeros((inf.NUM_CAMERAS, inf.NUM_FRAMES, 3, 224, 224))
 
     pred = inf.predict_nutrition(
-        checkpoint_path="dummy.pth",
+        checkpoint_path_or_model="dummy.pth",
         images=images,
         normalisation_method="zscore",
         image_size=224,
@@ -165,11 +165,13 @@ def test_predict_nutrition_supports_model_returning_dict(monkeypatch):
         "load_model_for_inference",
         lambda checkpoint_path, device=None: (DummyModel(), torch.device("cpu")),
     )
-    monkeypatch.setattr(inf, "load_normalization_stats", lambda *a, **k: {"targets": {}})
+    monkeypatch.setattr(
+        inf, "load_normalization_stats", lambda *a, **k: {"targets": {}}
+    )
 
     images = torch.zeros((inf.NUM_CAMERAS, inf.NUM_FRAMES, 3, 224, 224))
     pred = inf.predict_nutrition(
-        checkpoint_path="dummy.pth",
+        checkpoint_path_or_model="dummy.pth",
         images=images,
         normalisation_method="zscore",
         image_size=224,
