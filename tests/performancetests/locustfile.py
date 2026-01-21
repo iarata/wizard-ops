@@ -1,8 +1,10 @@
-import random
 import io
+import random
+
+import numpy as np
 from locust import HttpUser, LoadTestShape, between, task
 from PIL import Image
-import numpy as np
+
 
 class FoodAnalyzerUser(HttpUser):
     """A locust user who checks health endpoint and posts an image. 1/10 times it posts an invalid image."""

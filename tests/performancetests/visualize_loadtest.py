@@ -1,6 +1,7 @@
-import pandas as pd
-import matplotlib.pyplot as plt
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import pandas as pd
 
 # Load the stats history
 df = pd.read_csv('tests/performancetests/stats/loadtest_stats_history.csv')

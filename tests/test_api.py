@@ -1,9 +1,11 @@
-from fastapi.testclient import TestClient
-from wizard_ops.api import app
-from PIL import Image
 import io
+
 import numpy as np
 import pytest
+from fastapi.testclient import TestClient
+from PIL import Image
+
+from wizard_ops.api import app
 
 
 @pytest.fixture
