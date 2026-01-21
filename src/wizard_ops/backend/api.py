@@ -23,7 +23,7 @@ model_dev_t: tuple[torch.nn.Module, torch.device] | None = None
 
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app: FastAPI):
     global model_dev_t
 
     if not MODEL_PATH.exists():
