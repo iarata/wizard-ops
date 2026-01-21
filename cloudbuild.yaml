@@ -1,0 +1,26 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build container image'
+    args: [
+      'build',
+      '--network=cloudbuild',
+      '.',
+      '-t',
+      'europe-west4-docker.pkg.dev/$PROJECT_ID/${_REPO_NAME}/${_IMAGE_NAME}:latest',
+      '-f',
+      'dockerfiles/train.dockerfile'
+    ]
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push container image'
+    args: [
+      'push',
+      '--network=cloudbuild',
+      'europe-west4-docker.pkg.dev/$PROJECT_ID/${_REPO_NAME}/${_IMAGE_NAME}:latest'
+    ]
+
+substitutions:
+  _REPO_NAME: 'container-registry'
+  _IMAGE_NAME: 'nutrition-trainer' 
+
+options:
+  logging: CLOUD_LOGGING_ONLY

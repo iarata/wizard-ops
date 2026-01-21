@@ -1,0 +1,29 @@
+# VCS
+.git
+.git/**
+
+# Python virtual envs
+.venv
+venv
+env/
+
+# Build/artifacts
+build/
+dist/
+*.egg-info/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Data and large files
+data.nosync
+data.nosync/**
+
+# Editor/OS
+.DS_Store
+.vscode/
+
+# Logs
+logs/
+*.log

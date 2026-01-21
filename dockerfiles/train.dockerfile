@@ -6,23 +6,20 @@ RUN apt update && \
 
 RUN pip install dvc dvc[gs] 
 
-COPY uv.lock uv.lock
-COPY pyproject.toml pyproject.toml
-COPY README.md README.md
-COPY src/ src/
-COPY data/ data/
+WORKDIR /app
 
-COPY dtumlops-484413-083ba11aaab8.json default.json
-COPY .dvc/config .dvc/config
-COPY *.dvc .dvc/
-
-WORKDIR /
+COPY uv.lock pyproject.toml README.md ./
 RUN uv sync --locked --no-cache --no-install-project
 
-RUN uv run dvc init --no-scm
-RUN uv run dvc config core.no_scm true
-RUN uv run dvc pull
+COPY src/ src/
+COPY .dvc/config .dvc/config
+COPY *.dvc ./ 
 
-RUN dvc remote modify dtu_kfc_gs --local gdrive_service_account_json_file_path default.json
+RUN uv run dvc config core.no_scm true
+
+# RUN uv run dvc remote modify dtu_kfc_gs --local \
+#     gdrive_service_account_json_file_path /default.json
+
+RUN uv run dvc pull
 
 ENTRYPOINT ["uv", "run", "wizard_ops", "train"]
