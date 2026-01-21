@@ -4,33 +4,40 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 import importlib
 import sys
 
-# @pytest.fixture
-# def sample_image():
-#     """Create a sample image for testing."""
-#     return img_bytes
+@pytest.fixture
+def sample_image():
+    """Create a sample image for testing."""
+    # Generate test image
+    img = Image.fromarray(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format='JPEG')
+    img_bytes.seek(0)  # Reset to start
+    return img_bytes
 
-def test_health_check():
+@pytest.fixture
+def mock_model():
+    "Create mock model. Returns (mock_model,mock_device)"
+    return (MagicMock(), MagicMock())
+
+@pytest.fixture(autouse=True)
+def clean_app_module():
+    """Automatically clean up app module after each test."""
+    yield
+    if 'wizard_ops.backend.api' in sys.modules:
+        del sys.modules['wizard_ops.backend.api']
+
+def test_health_check(mock_model):
     """Test the health check endpoint. Assumes the checkpoint is already in tmp."""
     with patch('pathlib.Path.exists', return_value=True), \
-         patch('wizard_ops.backend.api.evaluate.load_model_for_inference') as mock_load_model:
-         
-         # Create mock model and mock device
-         mock_model = MagicMock()
-         mock_device = MagicMock()
-         mock_load_model.return_value = (mock_model, mock_device)
+         patch('wizard_ops.backend.api.evaluate.load_model_for_inference', return_value=mock_model):
 
          # Force fresh import
-         if 'wizard_ops.backend.api' in sys.modules:
-             import wizard_ops.backend.api
-             importlib.reload(wizard_ops.backend.api)
-             app = wizard_ops.backend.api.app
-         else:
-             from wizard_ops.backend.api import app
-            
+         from wizard_ops.backend.api import app
+         
          with TestClient(app) as client:
             response = client.get("/")
             
@@ -45,16 +52,12 @@ def test_health_check():
             assert data["status"] == "ready"
             assert isinstance(data["model_loaded"], bool)
 
-def test_checkpoint_loading():
+def test_checkpoint_loading(mock_model):
     """Test that model is loaded when pathlib.Path.exists == False"""
     with patch('pathlib.Path.exists', return_value=False), \
-         patch('wizard_ops.backend.api.evaluate.load_model_for_inference') as mock_load_model, \
+         patch('wizard_ops.backend.api.evaluate.load_model_for_inference', return_value=mock_model) as mock_load_model, \
          patch('wizard_ops.backend.api.storage.Client') as mock_storage_client:
         
-        # Create mock model and mock device
-         mock_model = MagicMock()
-         mock_device = MagicMock()
-         mock_load_model.return_value = (mock_model, mock_device)
 
          mock_bucket = MagicMock()
          mock_blob = MagicMock()
@@ -62,12 +65,7 @@ def test_checkpoint_loading():
          mock_bucket.blob.return_value = mock_blob
 
          # Force fresh import
-         if 'wizard_ops.backend.api' in sys.modules:
-             import wizard_ops.backend.api
-             importlib.reload(wizard_ops.backend.api)
-             app = wizard_ops.backend.api.app
-         else:
-             from wizard_ops.backend.api import app
+         from wizard_ops.backend.api import app
         
          with TestClient(app):
              # Verify download happened
@@ -75,27 +73,16 @@ def test_checkpoint_loading():
              mock_blob.download_to_filename.assert_called_once()
              mock_load_model.assert_called_once()
 
-        
          
 
-def test_analyze_with_valid_image():
+def test_analyze_with_valid_image(sample_image, mock_model):
     """Test /analyze endpoint with a valid image."""
-    # Generate test image
-    img = Image.fromarray(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))
-    img_bytes = io.BytesIO()
-    img.save(img_bytes, format='JPEG')
-    img_bytes.seek(0)  # Reset to start
 
     # Patch google storage client, model loading, model path and predict function
     with patch('pathlib.Path.exists', return_value=True), \
-         patch('wizard_ops.evaluate.load_model_for_inference') as mock_load_model, \
+         patch('wizard_ops.backend.api.evaluate.load_model_for_inference', return_value=mock_model), \
          patch('wizard_ops.backend.api.evaluate.predict_nutrition') as mock_predict:
          
-         # Create mock model and mock device
-         mock_model = MagicMock()
-         mock_device = MagicMock()
-         mock_load_model.return_value = (mock_model, mock_device)
-
          # Mock prediction
          mock_predict.return_value = {
              "normalized":
@@ -116,7 +103,7 @@ def test_analyze_with_valid_image():
              from wizard_ops.backend.api import app
 
          with TestClient(app) as client:
-            files = {'file': ('food.jpg', img_bytes, 'image/jpeg')}
+            files = {'file': ('food.jpg', sample_image, 'image/jpeg')}
             response = client.post("/analyze", files=files)
                     
             assert response.status_code == 200
