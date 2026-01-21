@@ -42,7 +42,7 @@ jobs:
             -t gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
             -t gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest \
             -f dockerfiles/api.dockerfile \
-            ./backend
+            .
 
       - name: Push Backend Image
         run: |
@@ -95,7 +95,7 @@ jobs:
             -t gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }} \
             -t gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:latest \
             -f dockerfiles/frontend.dockerfile \
-            ./frontend
+            .
 
       - name: Push Frontend Image
         run: |
