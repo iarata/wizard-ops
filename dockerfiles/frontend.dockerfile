@@ -1,6 +1,6 @@
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS base
 
-COPY ../src/wizard_ops/frontend/pyproject.toml pyproject.toml
+COPY src/wizard_ops/frontend/pyproject.toml pyproject.toml
 
 COPY src/wizard_ops/frontend/frontend.py frontend.py
 
