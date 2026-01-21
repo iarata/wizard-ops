@@ -11,6 +11,8 @@ from google.cloud import storage
 from .model import DishMultiViewRegressor
 from .data import get_default_transforms
 
+from . import evaluate
+
 import logging
 from pathlib import Path
 
@@ -21,15 +23,15 @@ logger = logging.getLogger(__name__)
 
 MODEL_PATH = Path("/tmp/best-nutrition-v0.ckpt")
 BUCKET_NAME = "dtu-kfc-bucket"
-BLOB_NAME = "best-nutrition-v0.ckpt"
+BLOB_NAME = "checkpoints/nutrition_resnet18_0115_1951/best-nutrition-epoch=04-val-loss=0.00.ckpt"
 
-model = None
-transform = None
+model_dev_t: tuple[torch.nn.Module, torch.device] | None = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    global model, transform
+    global model_dev_t
 
     if not MODEL_PATH.exists():
         print(f"Downloading model from gs://{BUCKET_NAME}/{BLOB_NAME}")
@@ -40,14 +42,9 @@ async def lifespan(app: FastAPI):
         print("Model downloaded successfully")
 
     # Checkpoint PyTorch-Lightning
-    checkpoint = torch.load(MODEL_PATH.resolve(), map_location=torch.device("cpu"))
-
-    # Extract only weights
-    model = DishMultiViewRegressor()
-    model.load_state_dict(checkpoint["state_dict"])
-    model.eval()
-
-    transform = get_default_transforms(224)
+    model_dev_t = evaluate.load_model_for_inference(
+        MODEL_PATH, device=torch.device("cpu")
+    )
     yield
     # Shutdown
 
@@ -72,7 +69,7 @@ async def analyze_food(file: UploadFile = File(...)):
 
     # load model
     # https://storage.cloud.google.com/dtu-kfc-bucket/best-nutrition-v0.ckpt
-    if model is None or transform is None:
+    if model_dev_t is None:
         return {
             "message": "Model not loaded yet. Please try again later.",
             "status": HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -86,40 +83,13 @@ async def analyze_food(file: UploadFile = File(...)):
     }
 
     try:
-        imgarr = np.array(image.convert("RGB"))
-        out = transform(image=imgarr)
-
-        # albumentations typically returns a dict {'image': ...}
-        image_obj = None
-        if isinstance(out, dict):
-            image_obj = out.get("image")
-        else:
-            image_obj = out
-
-        # normalize to a torch tensor with shape (C, H, W)
-        if isinstance(image_obj, np.ndarray):
-            image_tensor = torch.from_numpy(image_obj).permute(2, 0, 1).float() / 255.0
-        elif isinstance(image_obj, torch.Tensor):
-            image_tensor = image_obj
-        else:
-            raise TypeError(f"Unsupported transform output type: {type(image_obj)}")
-
-        image_batch = (
-            torch.stack([image_tensor], dim=0).unsqueeze(0).to(torch.device("cpu"))
-        )
-
-        with torch.no_grad():
-            predictions, _ = model(image_batch)
-
-        pred_values = predictions.squeeze().cpu().numpy()
-
-        print(f"pred_values: {pred_values}")
+        prediction = evaluate.predict_nutrition(model_dev_t, images=[image])
 
         result = {
-            "calories": float(pred_values[0]),
-            "fat_g": float(pred_values[1]),
-            "protein_g": float(pred_values[2]),
-            "carbs_g": float(pred_values[3]),
+            "calories": prediction["normalized"]["total_calories"],
+            "fat_g": prediction["normalized"]["total_fat"],
+            "protein_g": prediction["normalized"]["total_protein"],
+            "carbs_g": prediction["normalized"]["total_carb"],
         }
 
     except Exception as e:
@@ -138,6 +108,7 @@ async def analyze_food(file: UploadFile = File(...)):
 #         "status": HTTPStatus.OK,
 #     }
 #     return response
+
 
 @app.get("/")
 def read_root():
