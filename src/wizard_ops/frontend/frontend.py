@@ -11,6 +11,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @st.cache_resource
 def get_backend_url() -> Optional[str]:
     parent = "projects/dtumlops-484413/locations/europe-west1"
@@ -29,11 +30,13 @@ def get_backend_url() -> Optional[str]:
 
 def main():
     # Prioritize override from env var
-    backend = os.environ.get("WIZARD_BACKEND") # or get_backend_url()
+    backend = os.environ.get("WIZARD_BACKEND") or get_backend_url()
     if backend is None:
         raise ValueError("Backend service not found")
 
-    st.set_page_config(page_title="Food Calorie Analyzer", layout="wide", page_icon=":hamburger:")
+    st.set_page_config(
+        page_title="Food Calorie Analyzer", layout="wide", page_icon=":hamburger:"
+    )
     st.title("🍔 Food Image Analyzer")
 
     col1, col2 = st.columns(2, gap="large")
