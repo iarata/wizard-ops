@@ -20,6 +20,7 @@ def _base_config(tmp_path: Path, logger_type: str = "tensorboard") -> dict:
         "seed": 42,
         "logging": {"type": logger_type},
         "data": {
+            "image_size": 224,
             "h5_path": str(tmp_path / "dummy.h5"),
             "dish_csv_path": str(tmp_path / "dummy.csv"),
             "batch_size": 2,
@@ -30,7 +31,6 @@ def _base_config(tmp_path: Path, logger_type: str = "tensorboard") -> dict:
         },
         "model": {
             "backbone": "resnet18",
-            "image_size": 224,
             "freeze_encoder": False,
             "hidden_dim": 64,
             "view_dropout_p": 0.0,
