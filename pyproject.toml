@@ -73,23 +73,20 @@ dev = [
 
 
 [tool.uv.sources]
-torch = [
-   { index = "pytorch-cpu" },
-]
-torchvision = [
-   { index = "pytorch-cpu" },
-]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+torchmetrics = [{ index = "pytorch-cpu" }]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
+[tool.uv]
+override-dependencies = ["torch==2.10.0+cpu", "torchvision==0.25.0+cpu"]
+
 [tool.uv.workspace]
-members = [
-    "src/wizard_ops/frontend",
-    "src/wizard_ops/backend",
-]
+members = ["src/wizard_ops/frontend", "src/wizard_ops/backend"]
 
 [tool.ruff]
 line-length = 120
