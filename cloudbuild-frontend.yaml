@@ -1,0 +1,14 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'dockerfiles/Dockerfile.frontend'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/streamlit-app:$SHORT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/streamlit-app:latest'
+      - '.'
+images:
+  - 'gcr.io/$PROJECT_ID/streamlit-app:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/streamlit-app:latest'
