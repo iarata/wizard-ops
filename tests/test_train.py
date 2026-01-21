@@ -18,7 +18,7 @@ IMPORT_PATH = "wizard_ops.train"
 def _base_config(tmp_path: Path, logger_type: str = "tensorboard") -> dict:
     return {
         "seed": 42,
-        "logging": {"type": logger_type},
+        "logging": {"type": logger_type, "experiment_name": "test_experiment"},
         "data": {
             "image_size": 224,
             "h5_path": str(tmp_path / "dummy.h5"),
