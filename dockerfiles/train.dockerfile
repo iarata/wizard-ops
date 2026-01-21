@@ -8,18 +8,20 @@ RUN pip install dvc dvc[gs]
 
 WORKDIR /app
 
-COPY uv.lock pyproject.toml README.md ./
-RUN uv sync --locked --no-cache --no-install-project
-
+COPY uv.lock uv.lock
+COPY pyproject.toml README.md ./
+COPY dtumlops-484413-083ba11aaab8.json default.json
 COPY src/ src/
 COPY .dvc/config .dvc/config
 COPY *.dvc ./ 
 
+RUN uv sync --locked --no-cache --no-install-project
+
 RUN uv run dvc config core.no_scm true
 
-# RUN uv run dvc remote modify dtu_kfc_gs --local \
-#     gdrive_service_account_json_file_path /default.json
+RUN uv run dvc remote modify dtu_kfc_gs --local \
+    dtumlops-484413-083ba11aaab8.json /default.json
 
 RUN uv run dvc pull
 
-ENTRYPOINT ["uv", "run", "wizard_ops", "train"]
+ENTRYPOINT ["uv", "run", "src/wizard_ops", "train"]
