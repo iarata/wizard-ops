@@ -5,10 +5,10 @@ from http import HTTPStatus
 from pathlib import Path
 
 import torch
-from PIL import Image
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from google.cloud import storage
+from PIL import Image
 
 from src.wizard_ops import evaluate
 

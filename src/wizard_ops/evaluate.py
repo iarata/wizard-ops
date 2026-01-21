@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, TypedDict, ItemsView, cast
+from typing import Any, ItemsView, TypedDict, cast
 
 import numpy as np
 import torch
