@@ -46,6 +46,13 @@ dependencies = [
   "typer>=0.21.1",
   "uvicorn==0.34.0",
   "wandb>=0.23.1",
+  "streamlit>=1.30.0",
+  "python-multipart>=0.0.6",
+  "requests>=2.32.5",
+  "google-cloud-run>=0.14.0",
+  "torchvision>=0.21.0",
+  "google-cloud-storage>=3.8.0",
+  "opencv-python-headless>=4.13.0.90",
 ]
 
 [project.scripts]
@@ -76,6 +83,11 @@ dev = [
 # name = "pytorch-cpu"
 # url = "https://download.pytorch.org/whl/cpu"
 # explicit = true
+
+[tool.uv.workspace]
+members = [
+    "src/wizard_ops/frontend",
+]
 
 [tool.ruff]
 line-length = 120
