@@ -18,7 +18,12 @@ IMPORT_PATH = "wizard_ops.train"
 def _base_config(tmp_path: Path, logger_type: str = "tensorboard") -> dict:
     return {
         "seed": 42,
-        "logging": {"type": logger_type},
+        "logging": {
+            "type": logger_type,
+            "experiment_name": "default_testing_experiment",
+            "wandb_project": "nutrition-predictor",
+            "wandb_entity": "dtu-dk",
+        },
         "data": {
             "image_size": 224,
             "h5_path": str(tmp_path / "dummy.h5"),
@@ -133,19 +138,6 @@ def test_train_uses_tensorboard_logger_and_calls_fit_and_save(
     monkeypatch.setattr(train_mod, "ModelCheckpoint", DummyCallback)
     monkeypatch.setattr(train_mod, "LearningRateMonitor", DummyCallback)
 
-    # Make run_name deterministic by patching train_mod.datetime.now().strftime(...)
-    class _FixedDT:
-        @staticmethod
-        def now():
-            class _Now:
-                @staticmethod
-                def strftime(_fmt: str) -> str:
-                    return "0101_0000"
-
-            return _Now()
-
-    monkeypatch.setattr(train_mod, "datetime", _FixedDT)
-
     # Capture torch.save
     saved = {}
 
@@ -170,7 +162,9 @@ def test_train_uses_tensorboard_logger_and_calls_fit_and_save(
 
     # Ensure the save path includes run_name + checkpoint_dir
     assert cfg["train"]["checkpoint_dir"] in str(saved["path"])
-    assert "nutrition_resnet18_0101_0000" in str(saved["path"])
+    assert f"nutrition_resnet18_{cfg["logging"]["experiment_name"]}" in str(
+        saved["path"]
+    )
 
 
 def test_train_uses_wandb_logger(train_mod, monkeypatch, tmp_path):
@@ -237,7 +231,9 @@ def test_train_raises_on_invalid_logger_type(train_mod, monkeypatch, tmp_path):
     assert "logger" in str(e.value).lower() or "invalid" in str(e.value).lower()
 
 
-def test_train_constructs_datamodule_with_expected_config(train_mod, monkeypatch, tmp_path):
+def test_train_constructs_datamodule_with_expected_config(
+    train_mod, monkeypatch, tmp_path
+):
     cfg = _base_config(tmp_path, logger_type="tensorboard")
 
     created = {}
