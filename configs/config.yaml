@@ -41,6 +41,7 @@ evaluate:
 
 logging:
   type: "wandb" # options: "tensorboard", "wandb"
-  wandb_team: "dtu-dk"
   wandb_project: "nutrition-prediction"
   wandb_entity: "dtu-dk"
+
+  experiment_name: "default_experiment"
