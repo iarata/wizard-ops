@@ -1,22 +1,16 @@
-from fastapi import FastAPI, File, UploadFile, Request
-from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
 import io
-from http import HTTPStatus
-from contextlib import asynccontextmanager
-import torch
-
-from google.cloud import storage
-
-from .model import DishMultiViewRegressor
-from .data import get_default_transforms
-
-from . import evaluate
-
 import logging
+from contextlib import asynccontextmanager
+from http import HTTPStatus
 from pathlib import Path
 
-import numpy as np
+import torch
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from google.cloud import storage
+from PIL import Image
+
+from src.wizard_ops import evaluate
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,7 +24,6 @@ model_dev_t: tuple[torch.nn.Module, torch.device] | None = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     global model_dev_t
 
     if not MODEL_PATH.exists():
@@ -46,12 +39,10 @@ async def lifespan(app: FastAPI):
         MODEL_PATH, device=torch.device("cpu")
     )
     yield
-    # Shutdown
 
 
 app = FastAPI(lifespan=lifespan)
 
-# Allow Streamlit to call FastAPI
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -98,16 +89,6 @@ async def analyze_food(file: UploadFile = File(...)):
         pass
 
     return result
-
-
-# @app.get("/")
-# def root():
-#     """Health check."""
-#     response = {
-#         "message": HTTPStatus.OK.phrase,
-#         "status": HTTPStatus.OK,
-#     }
-#     return response
 
 
 @app.get("/")

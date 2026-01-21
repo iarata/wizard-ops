@@ -196,3 +196,5 @@ wandb/
 
 evaluate_comparison.py
 /checkpoints
+
+key.json

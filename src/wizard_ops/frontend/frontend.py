@@ -1,12 +1,10 @@
-import streamlit as st
-import requests
-
+import logging
+import os
 from typing import Optional
 
+import requests
+import streamlit as st
 from google.cloud import run_v2
-import os
-
-import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

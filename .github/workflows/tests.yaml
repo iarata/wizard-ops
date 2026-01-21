@@ -44,7 +44,7 @@ jobs:
           # Optional: keep wandb quiet/disabled in CI even if imported
           WANDB_MODE: disabled
         run: |
-          uv sync --frozen
+          uv sync
           uv pip list
 
       - name: Run tests & coverage
