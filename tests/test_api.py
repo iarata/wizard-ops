@@ -107,7 +107,13 @@ def test_analyze_with_valid_image():
                 }
             }
          
-         from wizard_ops.backend.api import app
+         # Force fresh import
+         if 'wizard_ops.backend.api' in sys.modules:
+             import wizard_ops.backend.api
+             importlib.reload(wizard_ops.backend.api)
+             app = wizard_ops.backend.api.app
+         else:
+             from wizard_ops.backend.api import app
 
          with TestClient(app) as client:
             files = {'file': ('food.jpg', img_bytes, 'image/jpeg')}
@@ -127,6 +133,8 @@ def test_analyze_with_valid_image():
             assert isinstance(data["fat_g"], (int, float))
             assert isinstance(data["protein_g"], (int, float))
             assert isinstance(data["carbs_g"], (int, float))
+
+
 
 # # def test_analyze_with_png_image():
 # #     """Test /analyze with PNG format."""
