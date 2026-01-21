@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict, ItemsView, cast
 
 import numpy as np
 import torch
@@ -153,18 +153,18 @@ def _build_model_input_tensor(
 
 
 def denormalize_predictions(
-    preds: dict[str, float],
+    preds: NutritionPredictionValues,
     *,
     stats: dict,
     method: str = "zscore",
-) -> dict[str, float]:
+) -> NutritionPredictionValues:
     """
     Convert normalized predictions back to real units using normalisation_stats.json.
     """
     target_stats = (stats or {}).get("targets", {})
     out: dict[str, float] = {}
 
-    for k, v in preds.items():
+    for k, v in cast(ItemsView[str, float], preds.items()):
         val = float(v)
         stat = target_stats.get(k)
         if not stat:
@@ -183,7 +183,10 @@ def denormalize_predictions(
         else:
             out[k] = val
 
-    return out
+    assert set(out.keys()) == set(
+        TARGET_COLUMNS
+    ), "Denormalized output keys mismatch. This should never happen if the input is well-formed."
+    return cast(NutritionPredictionValues, out)
 
 
 def _extract_pred_tensor(model_out: Any) -> torch.Tensor:
@@ -244,16 +247,29 @@ def load_model_for_inference(
     return model, device
 
 
+class NutritionPredictionValues(TypedDict):
+    total_calories: float
+    total_mass: float
+    total_fat: float
+    total_carb: float
+    total_protein: float
+
+
+class NutritionPrediction(TypedDict):
+    normalized: NutritionPredictionValues
+    denormalized: NutritionPredictionValues
+
+
 @torch.inference_mode()
 def predict_nutrition(
-    checkpoint_path: str | Path,
+    checkpoint_path_or_model: str | Path | tuple[torch.nn.Module, torch.device],
     images: Any,
     *,
     image_size: int = 224,
     normalisation_method: str = "zscore",
     stats_path: str | Path | None = None,
     device: str | torch.device | None = None,
-) -> dict[str, dict[str, float]]:
+) -> NutritionPrediction:
     """
     Predict the 5 nutrition metrics for one dish (one or many images).
 
@@ -263,7 +279,12 @@ def predict_nutrition(
         "denormalized": {...}
       }
     """
-    model, dev = load_model_for_inference(checkpoint_path, device=device)
+    model, dev = None, None
+
+    if isinstance(checkpoint_path_or_model, tuple):
+        model, dev = checkpoint_path_or_model
+    else:
+        model, dev = load_model_for_inference(checkpoint_path_or_model, device=device)
 
     x = _build_model_input_tensor(
         images,
@@ -285,9 +306,15 @@ def predict_nutrition(
 
     # single dish -> first row
     pred = pred_t[0].tolist()
-    normalized = {k: float(v) for k, v in zip(TARGET_COLUMNS, pred)}
+    normalized = cast(
+        NutritionPredictionValues, {k: float(v) for k, v in zip(TARGET_COLUMNS, pred)}
+    )
 
-    stats = load_normalization_stats(stats_path) if stats_path else load_normalization_stats()
+    stats = (
+        load_normalization_stats(stats_path)
+        if stats_path
+        else load_normalization_stats()
+    )
     denorm = denormalize_predictions(
         normalized,
         stats=stats,
