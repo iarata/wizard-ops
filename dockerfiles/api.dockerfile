@@ -12,6 +12,7 @@ COPY pyproject.toml pyproject.toml
 RUN uv sync --no-install-project
 
 COPY src src/
+COPY configs configs/
 COPY README.md README.md
 
 RUN uv sync --all-packages

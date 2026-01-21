@@ -10,6 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from google.cloud import storage
 from PIL import Image
 
+from hydra import initialize, compose
+from omegaconf import OmegaConf, DictConfig
+
 from src.wizard_ops import evaluate
 
 logging.basicConfig(level=logging.INFO)
@@ -19,17 +22,50 @@ MODEL_PATH = Path("/tmp/best-nutrition-v0.ckpt")
 BUCKET_NAME = "dtu-kfc-bucket"
 BLOB_NAME = "checkpoints/nutrition_resnet18_0115_1951/best-nutrition-epoch=04-val-loss=0.00.ckpt"
 
+CONFIG_LOCATION = (
+    "../../../../configs"  # config path must be relative according to Hydra
+)
+
 model_dev_t: tuple[torch.nn.Module, torch.device] | None = None
+cfg: DictConfig | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model_dev_t
 
+    assert Path(
+        CONFIG_LOCATION
+    ).is_dir(), f"Config location {CONFIG_LOCATION} is not a directory."
+
+    experiment_name = None
+    checkpoints_dir = None
+    run_name = None
+
+    with initialize(version_base=None, config_path=str(CONFIG_LOCATION)):
+        global cfg
+        cfg = compose(config_name="config")
+
+        experiment_name = cfg.get("logging", {}).get("experiment_name", "N/A")
+        checkpoints_dir = cfg.get("model", {}).get("checkpoint_dir", "N/A")
+        backbone = cfg.get("model", {}).get("backbone", "N/A")
+        run_name = f"nutrition_{backbone}_{experiment_name}"
+
+        logger.info(
+            "Configuration loaded:"
+            + f"\n  - experiment_name: {experiment_name}"
+            + f"\n  - backbone: {backbone}"
+            + f"\n  - checkpoint_dir: {checkpoints_dir}"
+            + f"\n  - run_name: {run_name}"
+        )
+
     if not MODEL_PATH.exists():
-        print(f"Downloading model from gs://{BUCKET_NAME}/{BLOB_NAME}")
+        bucket_subpath = str(Path(checkpoints_dir) / run_name)
+        print(f"Downloading model from gs://{BUCKET_NAME}/{bucket_subpath}")
         client = storage.Client()
         bucket = client.bucket(BUCKET_NAME)
+
+        # TODO: must derive filename somehow or change how it is generated
         blob = bucket.blob(BLOB_NAME)
         blob.download_to_filename(MODEL_PATH)
         print("Model downloaded successfully")
