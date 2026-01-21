@@ -52,6 +52,7 @@ dependencies = [
   "google-cloud-run>=0.14.0",
   "torchvision>=0.21.0",
   "google-cloud-storage>=3.8.0",
+  "opencv-python-headless>=4.13.0.90",
 ]
 
 [project.scripts]
@@ -71,21 +72,24 @@ dev = [
 ]
 
 
-# [tool.uv.sources]
-# torch = [
-#     { index = "pytorch-cpu" },
-# ]
-# torchvision = [
-#     { index = "pytorch-cpu" },
-# ]
+[tool.uv.sources]
+torch = [
+   { index = "pytorch-cpu" },
+]
+torchvision = [
+   { index = "pytorch-cpu" },
+]
 
-# [[tool.uv.index]]
-# name = "pytorch-cpu"
-# url = "https://download.pytorch.org/whl/cpu"
-# explicit = true
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.uv.workspace]
-members = ["src/wizard_ops/frontend"]
+members = [
+    "src/wizard_ops/frontend",
+    "src/wizard_ops/backend",
+]
 
 [tool.ruff]
 line-length = 120
