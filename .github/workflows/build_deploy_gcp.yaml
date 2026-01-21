@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-#      - fe-be-gcloud-deployment
+      - fe-be-gcloud-deployment
   workflow_dispatch:
 
 env:
@@ -33,30 +33,21 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
-
-      - name: Build Backend Image
+      - name: Build Backend with Cloud Build
         run: |
-          docker build --platform linux/amd64 \
-            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
-            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest \
-            -f dockerfiles/api.dockerfile \
-            .
-
-      - name: Push Backend Image
-        run: |
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }}
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest
+          gcloud builds submit \
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest \
+            ./dockerfiles/api.dockerfile
 
       - name: Deploy Backend to Cloud Run
         run: |
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
             --image gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
             --region ${{ env.REGION }} \
-            --scaling=1 \
+            --allow-unauthenticated \
             --memory 2Gi \
-            --allow-unauthenticated
+            --cpu 2
 
       - name: Get Backend URL
         id: backend-url
@@ -86,25 +77,16 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
-
-      - name: Build Frontend Image
+      - name: Build Frontend with Cloud Build
         run: |
-          docker build --platform linux/amd64 \
-            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }} \
-            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:latest \
-            -f dockerfiles/frontend.dockerfile \
-            .
-
-      - name: Push Frontend Image
-        run: |
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }}
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:latest
+          gcloud builds submit \
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }} \
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:latest \
+            ./dockerfiles/frontend.dockerfile
 
       - name: Deploy Frontend to Cloud Run
         run: |
           gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
             --image gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }} \
             --region ${{ env.REGION }} \
-            --set-env-vars WIZARD_BACKEND=${{ needs.deploy-backend.outputs.url }}
+            --set-env-vars WIZARD_BACKEND=${{ needs.deploy-backend.steps.backend-url.outputs.url }}
