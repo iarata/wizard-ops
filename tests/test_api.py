@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from wizard_ops.api import app
+from wizard_ops.backend.api import app
 
 
 @pytest.fixture
