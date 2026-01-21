@@ -7,6 +7,8 @@ uv.lock
 *.pth
 .dvc/cache
 .dvc/tmp/
+# Hydra outputs
+outputs/
 
 #logging
 lightning_logs/

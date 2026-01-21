@@ -54,6 +54,9 @@ class DishMultiViewRegressor(L.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
+        
+        # --- For ONNX export compatibility ---
+        self.example_input_array = torch.randn(1, 4, 5, 3, image_size, image_size)
 
         # --- Image encoder (shared across all views) ---
         self.encoder = build_img_encoder(backbone=backbone, image_size=image_size)
@@ -104,6 +107,12 @@ class DishMultiViewRegressor(L.LightningModule):
         Randomly drop some views during training.
         Returns (images, mask) where mask is (B, V) bool.
         """
+        # ONNX export (via torch.onnx -> torch.export) cannot handle data-dependent
+        # Python control flow (e.g., the "ensure at least one view" loop below).
+        # Export/inference should also be deterministic, so we disable view dropout.
+        if torch.onnx.is_in_onnx_export() or torch.jit.is_tracing():
+            return images, None
+
         if not self.training or float(self.hparams.view_dropout_p) <= 0:
             return images, None
 
@@ -179,11 +188,37 @@ class DishMultiViewRegressor(L.LightningModule):
         if not bool(self.hparams.log_wandb_examples):
             return
 
+        # images can be:
+        # - (B, 4, 5, C, H, W)  (angles x frames)
+        # - (B, V, C, H, W)     (flattened views)
+        # - (B, C, H, W)        (single view)
+        def _pick_first_image(imgs: torch.Tensor, idx: int) -> torch.Tensor:
+            if imgs.ndim == 6:
+                # (B, A, F, C, H, W) -> choose first angle + first frame
+                img = imgs[idx, 0, 0]
+            elif imgs.ndim == 5:
+                # (B, V, C, H, W) -> choose first view
+                img = imgs[idx, 0]
+            elif imgs.ndim == 4:
+                # (B, C, H, W)
+                img = imgs[idx]
+            else:
+                raise ValueError(
+                    f"Unexpected images shape for logging: {tuple(imgs.shape)}"
+                )
+
+            # Ensure (C, H, W)
+            if img.ndim != 3:
+                raise ValueError(
+                    f"Expected a single image of shape (C, H, W); got {tuple(img.shape)}"
+                )
+            return img
+
         b = min(int(max_items), int(images.shape[0]))
         payload = {}
 
         for i in range(b):
-            img = images[i, 0]  # first view, (C, H, W)
+            img = _pick_first_image(images, i)  # (C, H, W)
             denom = (img.max() - img.min()).clamp_min(1e-6)
             img01 = (img - img.min()) / denom
 

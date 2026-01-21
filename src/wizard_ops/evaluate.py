@@ -1,307 +1,297 @@
-from typing import Annotated
+from __future__ import annotations
 
-import lightning as L
+import logging
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 import torch
-import typer
-from data import NutritionDataModule, denormalize, get_default_transforms
-from model import DishMultiViewRegressor
 from PIL import Image
 
-app = typer.Typer()
+from wizard_ops.model import DishMultiViewRegressor
+from wizard_ops.utils import get_default_transforms, load_normalization_stats
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+NUM_CAMERAS = 4
+NUM_FRAMES = 5
+
+TARGET_COLUMNS = [
+    "total_calories",
+    "total_mass",
+    "total_fat",
+    "total_carb",
+    "total_protein",
+]
 
 
-@app.command("evaluate")
-@torch.inference_mode()
-def predict_from_pil_images(img_path: Annotated[str, typer.Option(help="Path to the image file")],
-                            device: Annotated[str, typer.Option(help="Device to run on (cpu/mps/cuda)")] =
-                            "mps" if torch.backends.mps.is_available() else "cpu",
-                            normalized_output: Annotated[bool, typer.Option(help="Return normalized model output.")] = False,
-                            uncertainty: Annotated[bool, typer.Option(help="Use monte carlo drop-out for predictions")] = False):
-    """Predict from a single image path. The augmentation/transform is constructed
-    inside the function to avoid Typer trying to serialize it to the CLI.
+def _as_rgb_numpy(x: Any) -> np.ndarray:
     """
+    Convert input to RGB uint8 numpy array in HWC layout.
+    Accepts: path/Path, PIL.Image, numpy array.
+    """
+    if isinstance(x, (str, Path)):
+        img = Image.open(x).convert("RGB")
+        return np.array(img, dtype=np.uint8)
 
-    # build transform at runtime (Typer doesn't try to serialize this)
-    transform = get_default_transforms(224)
+    if isinstance(x, Image.Image):
+        return np.array(x.convert("RGB"), dtype=np.uint8)
 
-    model = DishMultiViewRegressor.load_from_checkpoint("checkpoints/best-nutrition-0.ckpt")
-    print(model.hparams)
+    if isinstance(x, np.ndarray):
+        arr = x
+        if arr.dtype != np.uint8:
+            arr = arr.astype(np.uint8)
+        # Accept HWC or CHW; convert to HWC
+        if arr.ndim == 3 and arr.shape[0] in (1, 3) and arr.shape[-1] not in (1, 3):
+            # CHW -> HWC
+            arr = np.transpose(arr, (1, 2, 0))
+        return arr
 
-    model.eval().to(device)
-
-    tensors = []
-    img = Image.open(img_path).convert("RGB")
-    arr = np.array(img)
-
-    out = transform(image=arr)
-    # albumentations typically returns a dict {'image': ...}
-    if isinstance(out, dict):
-        image_obj = out.get("image")
-    else:
-        image_obj = out
-
-    # normalize to a torch tensor with shape (C, H, W)
-    if isinstance(image_obj, np.ndarray):
-        image_tensor = torch.from_numpy(image_obj).permute(2, 0, 1).float() / 255.0
-    elif isinstance(image_obj, torch.Tensor):
-        image_tensor = image_obj
-    else:
-        raise TypeError(f"Unsupported transform output type: {type(image_obj)}")
-
-    tensors.append(image_tensor)
-
-    images = torch.stack(tensors, dim=0).unsqueeze(0).to(device)
-    # images: (1, V, C, H, W)
+    raise TypeError(f"Unsupported image type: {type(x)}")
 
 
-    if uncertainty:
-        preds, std = model.predict_with_uncertainty(images,n_samples=20)
-        preds = preds.squeeze(0).cpu()
-        std = std.squeeze(0).cpu()
+def _tile_or_trim_views(
+    views: list[Any],
+    *,
+    num_cameras: int = NUM_CAMERAS,
+    num_frames: int = NUM_FRAMES,
+) -> list[Any]:
+    """
+    Normalize view list length to exactly num_cameras*num_frames using common heuristics.
+    """
+    want = num_cameras * num_frames
+    n = len(views)
 
-        std = {
-            "total_calories": float(std[0]),
-            "total_mass": float(std[1]),
-            "total_fat": float(std[2]),
-            "total_carb": float(std[3]),
-            "total_protein": float(std[4]),
-        }
+    if n == want:
+        return views
 
-    else:    
-        preds, attn = model(images)
-        preds = preds.squeeze(0).cpu()
+    if n == 1:
+        return views * want
 
-    result = {
-        "total_calories": float(preds[0]),
-        "total_mass": float(preds[1]),
-        "total_fat": float(preds[2]),
-        "total_carb": float(preds[3]),
-        "total_protein": float(preds[4]),
-        "num_images_used": len(tensors),
-    }
+    if n == num_cameras:
+        # 4 camera snapshots -> repeat frames
+        out = []
+        for cam_img in views:
+            out.extend([cam_img] * num_frames)
+        return out  # cam0 f0..f4, cam1 f0..f4, ...
 
-    if not normalized_output:
-        # Load data to get norm_stats ###IS THIS BEST WAY TO DO IT?
-        data_module = NutritionDataModule(
-            data_path="data.nosync",
-            dish_csv="src/wizard_ops/metadata/data_stats.csv",
-            batch_size=1,
-            image_size=224,
-            normalise_dish_metadata=True,
-            val_split=0.0,
-            num_workers=0,
-            use_only_dishes_with_all_cameras=True,
-            seed=42,
+    if n == num_frames:
+        # 5 frames from one camera -> repeat cameras
+        return views * num_cameras
+
+    # Fallback: tile then trim
+    if n < want:
+        reps = (want + n - 1) // n
+        tiled = (views * reps)[:want]
+        logger.warning(
+            "Got %d images; tiling to %d views for model input.",
+            n,
+            want,
         )
-    
-        # Setup and get validation dataset
-        data_module.setup()
-        dataset = data_module.train_dataset
-        norm_stats = dataset.normalization_stats
+        return tiled
 
-        result = denormalize(result, norm_stats)
-
-        if uncertainty:
-            std = denormalize(std, norm_stats)
-        
-
-    if uncertainty:
-        typer.echo("Result")
-        typer.echo(result)
-        typer.echo("Standard deviation")
-        typer.echo(std)
-        return result, std
-
-    typer.echo("Result")
-    typer.echo(result)
-    return result
-
-@app.command("evaluate_validation_sample")
-@torch.inference_mode()
-def evaluate_validation_sample(
-    data_path: Annotated[str, typer.Option(help="Path to the data directory")] = "data.nosync",
-    dish_csv: Annotated[str, typer.Option(help="Path to dish metadata CSV")] = "src/wizard_ops/metadata/data_stats.csv",
-    checkpoint_path: Annotated[str, typer.Option(help="Path to model checkpoint")] = "checkpoints/best-nutrition-0.ckpt",
-    device: Annotated[str, typer.Option(help="Device to run on (cpu/mps/cuda)")] = "mps" if torch.backends.mps.is_available() else "cpu",
-    sample_idx: Annotated[int, typer.Option(help="Index of validation sample to test")] = 0,
-    print_stats: Annotated[bool, typer.Option(help="Print normalization statistics")] = False,
-    print_normalized: Annotated[bool, typer.Option(help="Print normalized values (0-1 scale)")] = False,
-    uncertainty : Annotated[bool, typer.Option(help="Add uncertainty to predictions based on monte-carlo dropout.")] = False,
-):
-    """Load a test sample from the validation set, make a prediction, and compare with ground truth."""
-    
-    # Load the model
-    model = DishMultiViewRegressor.load_from_checkpoint(checkpoint_path)
-    model.eval().to(device)
-    
-    typer.echo(f"Loaded model from {checkpoint_path}")
-    typer.echo(f"Model hyperparameters: {model.hparams}")
-    typer.echo()
-    
-    # Create data module
-    val_transform = get_default_transforms(224)
-    data_module = NutritionDataModule(
-        data_path=data_path,
-        dish_csv=dish_csv,
-        batch_size=1,
-        image_size=224,
-        val_transform=val_transform,
-        normalise_dish_metadata=True,
-        val_split=0.2,
-        num_workers=0,
-        use_only_dishes_with_all_cameras=True,
-        seed=42,
+    # n > want
+    logger.warning(
+        "Got %d images; trimming to first %d views for model input.",
+        n,
+        want,
     )
-    
-    # Setup and get validation dataset
-    data_module.setup()
-    val_dataset = data_module.val_dataset
-    norm_stats = val_dataset.normalization_stats
-
-    typer.echo(f"Validation dataset size: {len(val_dataset)}")
-    typer.echo(f"Loading sample at index {sample_idx}...")
-    typer.echo()
-    
-    # Get a sample from the validation set
-    sample = val_dataset[sample_idx]
-    
-    # Extract data
-    dish_id = sample["dish_id"]
-    images = sample["images"].unsqueeze(0).to(device)  # Add batch dimension: (1, 4, 5, C, H, W)
-    
-    # Get ground truth (already normalized by the dataset)
-    ground_truth = {
-        "total_calories": float(sample["total_calories"]),
-        "total_mass": float(sample["total_mass"]),
-        "total_fat": float(sample["total_fat"]),
-        "total_carb": float(sample["total_carb"]),
-        "total_protein": float(sample["total_protein"]),
-    }
-    
-    # Print Dish ID
-    typer.echo("=" * 80)
-    typer.echo(f"DISH ID: {dish_id}")
-    typer.echo("=" * 80)
-    typer.echo()
-    
-    if uncertainty:
-        mean_normalized, std_normalized = model.predict_with_uncertainty(images)
-        mean_normalized = mean_normalized.cpu()
-        std_normalized = std_normalized.cpu()
-
-        # Convert to dict for denormalization
-        mean_dict = {
-            "total_calories": float(mean_normalized[0, 0]),
-            "total_mass": float(mean_normalized[0, 1]),
-            "total_fat": float(mean_normalized[0, 2]),
-            "total_carb": float(mean_normalized[0, 3]),
-            "total_protein": float(mean_normalized[0, 4]),
-        }
-
-        std_dict = {
-            "total_calories": float(std_normalized[0, 0]),
-            "total_mass": float(std_normalized[0, 1]),
-            "total_fat": float(std_normalized[0, 2]),
-            "total_carb": float(std_normalized[0, 3]),
-            "total_protein": float(std_normalized[0, 4]),
-        }
-
-        # Denormalize mean: multiply by max_val
-        mean_denormalized = denormalize(mean_dict, norm_stats)
-
-        # Denormalize std: also multiply by max_val (std scales linearly)
-        std_denormalized = denormalize(std_dict, norm_stats)
-        
-        # Denormalize ground truth
-        ground_truth_denormalized = denormalize(ground_truth, norm_stats)
-
-        # Print prediction and ground truth
-        if print_normalized:
-            typer.echo("NORMALIZED VALUES (0-1 scale):")
-            typer.echo("-" * 80)
-            typer.echo(f"{'Metric':<20} {'Predicted':<15} {'Actual':<15} {'Difference':<15}")
-            typer.echo("-" * 80)
-            for key in mean_dict.keys():
-                pred = mean_dict[key]
-                std = std_dict[key]
-                actual = ground_truth[key]
-                diff = pred - actual
-                typer.echo(f"{key:<20} {pred:>7.4f} ± {std:<6.4f} {actual:<15.4f} {diff:<15.4f}")
-            typer.echo()
-        
-        typer.echo("DENORMALIZED VALUES (original units):")
-        typer.echo("-" * 80)
-        typer.echo(f"{'Metric':<20} {'Predicted':<15} {'Actual':<15} {'Difference':<15}")
-        typer.echo("-" * 80)
-        for key in mean_denormalized.keys():
-            pred = mean_denormalized[key]
-            std = std_denormalized[key]
-            actual = ground_truth_denormalized[key]
-            diff = pred - actual
-            typer.echo(f"{key:<20} {pred:>7.2f} ± {std:<6.2f} {actual:<15.2f} {diff:<15.2f}")
-        typer.echo()
+    return views[:want]
 
 
+def _build_model_input_tensor(
+    images: Any,
+    *,
+    image_size: int = 224,
+    transform=None,
+    device: torch.device,
+) -> torch.Tensor:
+    """
+    Build a tensor shaped (1, NUM_CAMERAS, NUM_FRAMES, 3, H, W) float32,
+    normalized exactly like validation (Resize + ImageNet Normalize).
+    """
+    if torch.is_tensor(images):
+        x = images
+        # Accept (4,5,3,H,W) or (B,4,5,3,H,W)
+        if x.ndim == 5:
+            x = x.unsqueeze(0)
+        if x.ndim != 6:
+            raise ValueError(f"Unexpected tensor shape: {tuple(x.shape)}")
+        return x.to(device)
+
+    # Normalize input to a list of "views"
+    if isinstance(images, (str, Path, Image.Image, np.ndarray)):
+        views = [images]
+    elif isinstance(images, (list, tuple)):
+        # allow nested lists; flatten one level
+        flat: list[Any] = []
+        for item in images:
+            if isinstance(item, (list, tuple)):
+                flat.extend(list(item))
+            else:
+                flat.append(item)
+        views = flat
     else:
-        # Make prediction
-        preds, attn = model(images)
-        preds = preds.squeeze(0).cpu()
-        
-        # Extract predictions
-        predictions_normalized = {
-            "total_calories": float(preds[0]),
-            "total_mass": float(preds[1]),
-            "total_fat": float(preds[2]),
-            "total_carb": float(preds[3]),
-            "total_protein": float(preds[4]),
-        }
+        raise TypeError(f"Unsupported images container type: {type(images)}")
 
-        # Denormalize predictions and ground truth
-        predictions_denormalized = denormalize(predictions_normalized, norm_stats)
-        ground_truth_denormalized = denormalize(ground_truth, norm_stats)
+    views = _tile_or_trim_views(views, num_cameras=NUM_CAMERAS, num_frames=NUM_FRAMES)
 
-        # Print prediction and ground truth
-        if print_normalized:
-            typer.echo("NORMALIZED VALUES (0-1 scale):")
-            typer.echo("-" * 80)
-            typer.echo(f"{'Metric':<20} {'Predicted':<15} {'Actual':<15} {'Difference':<15}")
-            typer.echo("-" * 80)
-            for key in predictions_normalized.keys():
-                pred = predictions_normalized[key]
-                actual = ground_truth[key]
-                diff = pred - actual
-                typer.echo(f"{key:<20} {pred:<15.4f} {actual:<15.4f} {diff:<15.4f}")
-            typer.echo()
-        
-        typer.echo("DENORMALIZED VALUES (original units):")
-        typer.echo("-" * 80)
-        typer.echo(f"{'Metric':<20} {'Predicted':<15} {'Actual':<15} {'Difference':<15}")
-        typer.echo("-" * 80)
-        for key in predictions_denormalized.keys():
-            pred = predictions_denormalized[key]
-            actual = ground_truth_denormalized[key]
-            diff = pred - actual
-            typer.echo(f"{key:<20} {pred:<15.2f} {actual:<15.2f} {diff:<15.2f}")
-        typer.echo()
-    
-    if print_stats:
-        typer.echo("NORMALIZATION STATS (max values):")
-        typer.echo("-" * 80)
-        if norm_stats:
-            for key, max_val in norm_stats.items():
-                typer.echo(f"{key:<20} {max_val:<15.2f}")
+    tf = transform or get_default_transforms(image_size=image_size)
+
+    per_view: list[torch.Tensor] = []
+    for v in views:
+        rgb = _as_rgb_numpy(v)  # HWC uint8
+        t = tf(image=rgb)["image"]  # (3,H,W) torch
+        if not torch.is_tensor(t):
+            t = torch.from_numpy(t)
+        per_view.append(t)
+
+    stacked = torch.stack(per_view, dim=0)  # (20,3,H,W)
+    stacked = stacked.view(NUM_CAMERAS, NUM_FRAMES, *stacked.shape[1:])  # (4,5,3,H,W)
+    return stacked.unsqueeze(0).to(device)  # (1,4,5,3,H,W)
+
+
+def denormalize_predictions(
+    preds: dict[str, float],
+    *,
+    stats: dict,
+    method: str = "zscore",
+) -> dict[str, float]:
+    """
+    Convert normalized predictions back to real units using normalisation_stats.json.
+    """
+    target_stats = (stats or {}).get("targets", {})
+    out: dict[str, float] = {}
+
+    for k, v in preds.items():
+        val = float(v)
+        stat = target_stats.get(k)
+        if not stat:
+            out[k] = val
+            continue
+
+        if method == "zscore":
+            out[k] = val * float(stat.get("std", 0.0)) + float(stat.get("mean", 0.0))
+        elif method == "minmax":
+            mn = float(stat.get("min", 0.0))
+            mx = float(stat.get("max", 0.0))
+            out[k] = val * (mx - mn) + mn
+        elif method == "max":
+            mx = float(stat.get("max", 0.0))
+            out[k] = val * mx
         else:
-            typer.echo("No normalization stats available")
-        typer.echo()
-        
-        return {
-            "dish_id": dish_id,
-            "predictions": predictions_denormalized,
-            "ground_truth": ground_truth_denormalized,
-            "predictions_normalized": predictions_normalized,
-            "ground_truth_normalized": ground_truth,
-        }
+            out[k] = val
 
-if __name__ == "__main__":
-    app()
+    return out
+
+
+def _extract_pred_tensor(model_out: Any) -> torch.Tensor:
+    """
+    Try to robustly get a (B,5) tensor from whatever the model returns.
+    """
+    if torch.is_tensor(model_out):
+        return model_out
+
+    if isinstance(model_out, (list, tuple)) and len(model_out) > 0:
+        if torch.is_tensor(model_out[0]):
+            return model_out[0]
+
+    if isinstance(model_out, dict):
+        # common keys
+        for k in ["preds", "y_hat", "yhat", "output", "outputs", "logits"]:
+            if k in model_out and torch.is_tensor(model_out[k]):
+                return model_out[k]
+
+        # or dict already keyed by target names
+        if all(name in model_out for name in TARGET_COLUMNS):
+            vals = [model_out[name] for name in TARGET_COLUMNS]
+            vals = [v if torch.is_tensor(v) else torch.tensor(v) for v in vals]
+            t = torch.stack(vals, dim=-1)  # (..., 5)
+            if t.ndim == 1:
+                t = t.unsqueeze(0)
+            return t
+
+    raise TypeError(
+        "Could not extract prediction tensor from model output of type "
+        f"{type(model_out)}"
+    )
+
+
+def load_model_for_inference(
+    checkpoint_path: str | Path,
+    *,
+    device: str | torch.device | None = None,
+) -> tuple[torch.nn.Module, torch.device]:
+    """
+    Supports:
+      - Lightning .ckpt via DishMultiViewRegressor.load_from_checkpoint
+      - torch-saved full model object (.pth) via torch.load
+    """
+    p = Path(checkpoint_path)
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    elif isinstance(device, str):
+        device = torch.device(device)
+
+    if p.suffix == ".ckpt":
+        model = DishMultiViewRegressor.load_from_checkpoint(str(p), map_location=device)
+    else:
+        model = torch.load(str(p), map_location=device)
+
+    model.eval()
+    model.to(device)
+    return model, device
+
+
+@torch.inference_mode()
+def predict_nutrition(
+    checkpoint_path: str | Path,
+    images: Any,
+    *,
+    image_size: int = 224,
+    normalisation_method: str = "zscore",
+    stats_path: str | Path | None = None,
+    device: str | torch.device | None = None,
+) -> dict[str, dict[str, float]]:
+    """
+    Predict the 5 nutrition metrics for one dish (one or many images).
+
+    Returns:
+      {
+        "normalized": {...},
+        "denormalized": {...}
+      }
+    """
+    model, dev = load_model_for_inference(checkpoint_path, device=device)
+
+    x = _build_model_input_tensor(
+        images,
+        image_size=image_size,
+        device=dev,
+    )
+
+    # call model (support both positional and keyword styles)
+    try:
+        out = model(x)
+    except TypeError:
+        out = model(images=x)
+
+    pred_t = _extract_pred_tensor(out)  # (B,5) expected
+    pred_t = pred_t.float().detach().cpu()
+
+    if pred_t.ndim != 2 or pred_t.shape[1] != len(TARGET_COLUMNS):
+        raise ValueError(f"Expected (B,5) predictions, got {tuple(pred_t.shape)}")
+
+    # single dish -> first row
+    pred = pred_t[0].tolist()
+    normalized = {k: float(v) for k, v in zip(TARGET_COLUMNS, pred)}
+
+    stats = load_normalization_stats(stats_path) if stats_path else load_normalization_stats()
+    denorm = denormalize_predictions(
+        normalized,
+        stats=stats,
+        method=normalisation_method,
+    )
+
+    return {"normalized": normalized, "denormalized": denorm}

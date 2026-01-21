@@ -9,6 +9,7 @@ import pytest
 import torch
 from albumentations import Compose
 from albumentations.pytorch import ToTensorV2
+
 from wizard_ops.data import (
 	NUM_CAMERAS,
 	NUM_FRAMES,
