@@ -50,8 +50,8 @@ dependencies = [
   "torch>=2.10.0",
   "torchvision>=0.25.0",
   "lightning>=2.6.0",
-  "albumentationsx[headless]>=2.0.14",
   "dvc[gs]>=3.66.1",
+  "albumentations>=2.0.8",
 ]
 
 [project.scripts]

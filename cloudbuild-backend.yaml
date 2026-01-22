@@ -1,21 +1,99 @@
+# Cloud Build configuration for Backend API deployment
+# Triggers: On push to main, changes to src/wizard_ops/backend/**, or manual
+# This pipeline builds and deploys the FastAPI backend to Cloud Run
+#
+# Settings from configs/config.yaml are used as defaults
+
 substitutions:
-  _SERVICE_NAME: wizard-ops-api
-  _TAG: latest
+  _SERVICE_NAME: "wizard-ops-api"
+  _REGION: "europe-west4"
+  _ARTIFACT_REGISTRY: "europe-west4-docker.pkg.dev/${PROJECT_ID}/container-registry"
+  _MEMORY: "2Gi"
+  _CPU: "1"
+  _MIN_INSTANCES: "0"
+  _MAX_INSTANCES: "10"
+  _BUCKET: "dtu-kfc-bucket"
+  # Model checkpoint path format: checkpoints/nutrition_{backbone}_{experiment_name}/final_model.ckpt
+  _CHECKPOINT_BLOB: "checkpoints/nutrition_resnet18_default_experiment/final_model.ckpt"
 
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
+  # Step 1: Build the API Docker image
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-api-image"
     args:
-      - 'build'
-      - '-f'
-      - 'dockerfiles/api.dockerfile'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:${_TAG}'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'
-      - '.'
+      - "build"
+      - "-f"
+      - "dockerfiles/api.dockerfile"
+      - "-t"
+      - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:${SHORT_SHA}"
+      - "-t"
+      - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:latest"
+      - "--build-arg"
+      - "BUCKET_NAME=${_BUCKET}"
+      - "--build-arg"
+      - "CHECKPOINT_BLOB=${_CHECKPOINT_BLOB}"
+      - "."
+
+  # Step 2: Push image to Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-api-image"
+    args:
+      - "push"
+      - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:${SHORT_SHA}"
+    waitFor: ["build-api-image"]
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-api-image-latest"
+    args:
+      - "push"
+      - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:latest"
+    waitFor: ["build-api-image"]
+
+  # Step 3: Deploy to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-api"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE_NAME}"
+      - "--image"
+      - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:${SHORT_SHA}"
+      - "--region"
+      - "${_REGION}"
+      - "--platform"
+      - "managed"
+      - "--memory"
+      - "${_MEMORY}"
+      - "--cpu"
+      - "${_CPU}"
+      - "--min-instances"
+      - "${_MIN_INSTANCES}"
+      - "--max-instances"
+      - "${_MAX_INSTANCES}"
+      - "--allow-unauthenticated"
+      - "--set-env-vars"
+      - "BUCKET_NAME=${_BUCKET},CHECKPOINT_BLOB=${_CHECKPOINT_BLOB}"
+    waitFor: ["push-api-image"]
+
+  # Step 4: Output the service URL
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "get-service-url"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        SERVICE_URL=$$(gcloud run services describe ${_SERVICE_NAME} --region=${_REGION} --format='value(status.url)')
+        echo "Backend API deployed at: $${SERVICE_URL}"
+        echo "$${SERVICE_URL}" > /workspace/backend_url.txt
+    waitFor: ["deploy-api"]
+
 images:
-  - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:${_TAG}'
-  - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'
+  - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:${SHORT_SHA}"
+  - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:latest"
 
 options:
-  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+  logging: CLOUD_LOGGING_ONLY
+  machineType: "E2_HIGHCPU_8"
+
+timeout: "1800s"
