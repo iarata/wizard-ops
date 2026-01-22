@@ -85,7 +85,7 @@ steps:
     waitFor: ["build-train-image"]
 
   # Step 3: Run training
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+  - name: "gcr.io/cloud-builders/docker"
     id: "run-training"
     entrypoint: "bash"
     secretEnv: ["GCS_CREDENTIALS", "WANDB_API_KEY"]
