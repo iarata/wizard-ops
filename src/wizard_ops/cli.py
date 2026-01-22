@@ -6,9 +6,11 @@ import sys
 import typer
 
 from wizard_ops import get_version
+from wizard_ops.data_cli import app as data_app
 from wizard_ops.hydra_app import main as hydra_main
 
 app = typer.Typer(add_completion=False, help="wizard_ops command-line interface")
+app.add_typer(data_app, name="data", help="Data utilities")
 
 
 def _version_callback(value: bool) -> None:
@@ -40,13 +42,6 @@ def _run_hydra(forwarded: list[str]) -> None:
         sys.argv = old_argv
 
 
-def _split_on_double_dash(args: list[str]) -> tuple[list[str], list[str]]:
-    if "--" not in args:
-        return args, []
-    i = args.index("--")
-    return args[:i], args[i + 1 :]
-
-
 @app.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
@@ -61,29 +56,6 @@ def train(ctx: typer.Context) -> None:
 def evaluate(ctx: typer.Context) -> None:
     """Evaluate (Hydra-powered)."""
     _run_hydra(["mode=evaluate", *ctx.args])
-
-
-@app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-)
-def data(ctx: typer.Context) -> None:
-    """
-    Data utilities.
-
-    Convention:
-      - Hydra args first
-      - then `--`
-      - then data-subcommand args (parsed by Typer inside run_data_cli)
-    """
-    hydra_args, data_args = _split_on_double_dash(list(ctx.args))
-
-    # Pass data args to the data CLI runner via a simple global.
-    # (You can also store them in a module-level variable or similar.)
-    from wizard_ops.data_cli import set_data_argv
-
-    set_data_argv(data_args)
-
-    _run_hydra(["mode=data", *hydra_args])
 
 
 def main() -> None:
