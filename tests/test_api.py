@@ -34,7 +34,7 @@ def clean_app_module():
 def test_health_check(mock_model):
     """Test the health check endpoint. Assumes the checkpoint is already in tmp."""
     with patch('pathlib.Path.exists', return_value=True), \
-         patch('wizard_ops.backend.api.evaluate.load_model_for_inference', return_value=mock_model):
+         patch('wizard_ops.evaluate.load_model_for_inference', return_value=mock_model):
 
          # Force fresh import
          from wizard_ops.backend.api import app
@@ -56,7 +56,7 @@ def test_health_check(mock_model):
 def test_checkpoint_loading(mock_model):
     """Test that model is loaded when pathlib.Path.exists == False"""
     with patch('pathlib.Path.exists', return_value=False), \
-         patch('wizard_ops.backend.api.evaluate.load_model_for_inference', return_value=mock_model) as mock_load_model, \
+         patch('wizard_ops.evaluate.load_model_for_inference', return_value=mock_model) as mock_load_model, \
          patch('wizard_ops.backend.api.storage.Client') as mock_storage_client:
         
 
@@ -81,8 +81,8 @@ def test_analyze_with_valid_image(sample_image, mock_model):
 
     # Patch google storage client, model loading, model path and predict function
     with patch('pathlib.Path.exists', return_value=True), \
-         patch('wizard_ops.backend.api.evaluate.load_model_for_inference', return_value=mock_model), \
-         patch('wizard_ops.backend.api.evaluate.predict_nutrition') as mock_predict:
+         patch('wizard_ops.evaluate.load_model_for_inference', return_value=mock_model), \
+         patch('wizard_ops.evaluate.predict_nutrition') as mock_predict:
          
          # Mock prediction
          mock_predict.return_value = {
