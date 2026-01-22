@@ -32,10 +32,14 @@ echo "Max Epochs: ${MAX_EPOCHS}"
 echo "Batch Size: ${BATCH_SIZE}"
 echo "Fast Dev Run: ${FAST_DEV_RUN}"
 
-# Pull data from DVC
+# Pull data + current checkpoints from DVC
 echo ""
-echo "Pulling data from DVC..."
+echo "Pulling data from DVC (data.nosync.dvc)..."
 uv run dvc pull data.nosync.dvc
+
+echo ""
+echo "Pulling current checkpoints from DVC (checkpoints.dvc)..."
+uv run dvc pull checkpoints.dvc
 
 # Run training with Hydra config overrides
 echo ""
