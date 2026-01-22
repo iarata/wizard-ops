@@ -10,6 +10,8 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 
+from google.cloud import storage
+
 from wizard_ops.evaluate import load_model_for_inference, predict_nutrition
 
 logging.basicConfig(level=logging.INFO)
@@ -47,7 +49,6 @@ async def lifespan(app: FastAPI):
         if not checkpoint_path.exists():
             logger.info(f"Downloading model from gs://{BUCKET_NAME}/{BLOB_NAME}")
             # Import here to avoid dependency issues when running locally
-            from google.cloud import storage
             client = storage.Client()
             bucket = client.bucket(BUCKET_NAME)
             blob = bucket.blob(BLOB_NAME)
