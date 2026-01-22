@@ -33,7 +33,7 @@ jobs:
 
       - name: ruff check
         run: |
-          uv run ruff check --fix .
+          uv run ruff check .
 
       - name: ruff format
         run: |
