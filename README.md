@@ -87,7 +87,7 @@ will check the repositories and the code to verify your answers.
 - [x] Create the initial file structure using cookiecutter with an appropriate template (M6)
 - [x] Fill out the `data.py` file such that it downloads whatever data you need and preprocesses it (if necessary) (M6)
 - [x] Add a model to `model.py` and a training procedure to `train.py` and get that running (M6)
-- [ ] Remember to fill out the `requirements.txt` and `requirements_dev.txt` file with whatever dependencies that you
+- [x] Remember to fill out the `requirements.txt` and `requirements_dev.txt` file with whatever dependencies that you
       are using (M2+M6)
 - [x] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
 - [x] Do a bit of code typing and remember to document essential parts of your code (M7)
@@ -119,8 +119,8 @@ will check the repositories and the code to verify your answers.
 - [x] Get your model training in GCP using either the Engine or Vertex AI (M21)
 - [x] Create a FastAPI application that can do inference using your model (M22)
 - [x] Deploy your model in GCP using either Functions or Run as the backend (M23)
-- [ ] Write API tests for your application and set up continuous integration for these (M24)
-- [ ] Load test your application (M24)
+- [x] Write API tests for your application and set up continuous integration for these (M24)
+- [x] Load test your application (M24)
 - [ ] Create a more specialized ML-deployment API using either ONNX or BentoML, or both (M25)
 - [x] Create a frontend for your API (M26)
 
@@ -141,8 +141,8 @@ will check the repositories and the code to verify your answers.
 - [ ] Publish the documentation to GitHub Pages (M32)
 - [ ] Revisit your initial project description. Did the project turn out as you wanted?
 - [ ] Create an architectural diagram over your MLOps pipeline
-- [ ] Make sure all group members have an understanding about all parts of the project
-- [ ] Uploaded all your code to GitHub.
+- [x] Make sure all group members have an understanding about all parts of the project
+- [x] Uploaded all your code to GitHub.
 
 ## Group information
 
@@ -362,7 +362,25 @@ TODO: @Ari
 >
 > Answer:
 
-TODO: @Janis
+We have organized our continuous integration into 2 files -- 1) for linting and 2) testing.
+
+In the linting workflow we checkout the code, install the dependencies and run a check with `ruff`.
+In the testing workflow we checkout the code, install the dependencies and run `pytest` with coverage.
+
+We make use of cache, storing contents of ~/.cache/uv, ~/.local/share/uv/python, .venv from the runner to save 
+having to download the same dependencies on every run, when they don't change across most runs.
+
+Initially our setup was building on GitHub Actions and deploying to Google Cloud, later building and deploying, however,
+the latest revision work definition is also on Google Cloud. This makes it more difficult to reason about work definitions, 
+having workflow configurations on GitHub AND Google. Using GitHub CI/CD would make it rather simple to cache Docker layers as well, 
+reducing time spent building. 
+
+We do not test multiple operating systems and Python versions in the interest of performance and faster feedback cycles,
+we only test one OS = Linux, where our code runs, and the Python version we use = 3.12. That said, 
+running tests for different OSs and Python versions in parallel should not only give us confidence 
+on compatibility with different versions, but also accomplish our goal of fast feedback cycles.
+
+The testing workflow file is available here https://github.com/iarata/wizard-ops/blob/main/.github/workflows/tests.yaml
 
 ## Running code and tracking experiments
 
