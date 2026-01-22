@@ -20,11 +20,21 @@ substitutions:
   _FAST_DEV_RUN: ""
 
 steps:
-  # Step 1: Build training Docker image
+  # Step 0: Pull the latest image to use as cache (ignore failure if it doesn't exist)
+  - name: "gcr.io/cloud-builders/docker"
+    id: "pull-cache"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - "docker pull ${_ARTIFACT_REGISTRY}/wizard-ops-train:latest || exit 0"
+
+  # Step 1: Build training Docker image with layer caching
   - name: "gcr.io/cloud-builders/docker"
     id: "build-train-image"
     args:
       - "build"
+      - "--cache-from"
+      - "${_ARTIFACT_REGISTRY}/wizard-ops-train:latest"
       - "-f"
       - "dockerfiles/train.dockerfile"
       - "-t"
@@ -32,20 +42,15 @@ steps:
       - "-t"
       - "${_ARTIFACT_REGISTRY}/wizard-ops-train:latest"
       - "."
+    waitFor: ["pull-cache"]
 
-  # Step 2: Push training image to Artifact Registry
+  # Step 2: Push training image to Artifact Registry (push both tags in parallel)
   - name: "gcr.io/cloud-builders/docker"
     id: "push-train-image"
     args:
       - "push"
-      - "${_ARTIFACT_REGISTRY}/wizard-ops-train:${SHORT_SHA}"
-    waitFor: ["build-train-image"]
-
-  - name: "gcr.io/cloud-builders/docker"
-    id: "push-train-image-latest"
-    args:
-      - "push"
-      - "${_ARTIFACT_REGISTRY}/wizard-ops-train:latest"
+      - "--all-tags"
+      - "${_ARTIFACT_REGISTRY}/wizard-ops-train"
     waitFor: ["build-train-image"]
 
   # Step 3: Run training container
