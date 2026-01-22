@@ -1,5 +1,6 @@
 # Project description: Nutrition Predictor
-The overall goal of the project is to train a neural network (NN) model that can predict the nutritional value of a plate of food based on an image of the plate. 
+
+The overall goal of the project is to train a neural network (NN) model that can predict the nutritional value of a plate of food based on an image of the plate.
 
 The overall goal of the project is to train a model that can predict the
 nutritional value of a plate of food based on an image of the plate.
@@ -26,13 +27,12 @@ dataset. While published work has employed larger models like InceptionV2 and
 ResNet50/101 ([Thames et al., 2021](https://arxiv.org/abs/2103.03375)), ResNet18
 is a reasonable choice for purposes not focused on prediction accuracy.
 
-
 # Exam template for 02476 Machine Learning Operations
 
 This is the report template for the exam. Please only remove the text formatted as with three dashes in front and behind
 like:
 
-```--- question 1 fill here ---```
+`--- question 1 fill here ---`
 
 Where you instead should add your answers. Any other changes may have unwanted consequences when your report is
 auto-generated at the end of the course. For questions where you are asked to include images, start by adding the image
@@ -74,87 +74,88 @@ uv add typer markdown
 
 ## Overall project checklist
 
-The checklist is *exhaustive* which means that it includes everything that you could do on the project included in the
+The checklist is _exhaustive_ which means that it includes everything that you could do on the project included in the
 curriculum in this course. Therefore, we do not expect at all that you have checked all boxes at the end of the project.
 The parenthesis at the end indicates what module the bullet point is related to. Please be honest in your answers, we
 will check the repositories and the code to verify your answers.
 
 ### Week 1
 
-* [x] Create a git repository (M5)
-* [x] Make sure that all team members have write access to the GitHub repository (M5)
-* [x] Create a dedicated environment for you project to keep track of your packages (M2)
-* [x] Create the initial file structure using cookiecutter with an appropriate template (M6)
-* [x] Fill out the `data.py` file such that it downloads whatever data you need and preprocesses it (if necessary) (M6)
-* [x] Add a model to `model.py` and a training procedure to `train.py` and get that running (M6)
-* [ ] Remember to fill out the `requirements.txt` and `requirements_dev.txt` file with whatever dependencies that you
-    are using (M2+M6)
-* [x] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
-* [x] Do a bit of code typing and remember to document essential parts of your code (M7)
-* [x] Setup version control for your data or part of your data (M8)
-* [x] Add command line interfaces and project commands to your code where it makes sense (M9)
-* [x] Construct one or multiple docker files for your code (M10)
-* [x] Build the docker files locally and make sure they work as intended (M10)
-* [x] Write one or multiple configurations files for your experiments (M11)
-* [x] Used Hydra to load the configurations and manage your hyperparameters (M11)
-* [ ] Use profiling to optimize your code (M12)
-* [x] Use logging to log important events in your code (M14)
-* [x] Use Weights & Biases to log training progress and other important metrics/artifacts in your code (M14)
-* [ ] Consider running a hyperparameter optimization sweep (M14)
-* [x] Use PyTorch-lightning (if applicable) to reduce the amount of boilerplate in your code (M15)
+- [x] Create a git repository (M5)
+- [x] Make sure that all team members have write access to the GitHub repository (M5)
+- [x] Create a dedicated environment for you project to keep track of your packages (M2)
+- [x] Create the initial file structure using cookiecutter with an appropriate template (M6)
+- [x] Fill out the `data.py` file such that it downloads whatever data you need and preprocesses it (if necessary) (M6)
+- [x] Add a model to `model.py` and a training procedure to `train.py` and get that running (M6)
+- [ ] Remember to fill out the `requirements.txt` and `requirements_dev.txt` file with whatever dependencies that you
+      are using (M2+M6)
+- [x] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
+- [x] Do a bit of code typing and remember to document essential parts of your code (M7)
+- [x] Setup version control for your data or part of your data (M8)
+- [x] Add command line interfaces and project commands to your code where it makes sense (M9)
+- [x] Construct one or multiple docker files for your code (M10)
+- [x] Build the docker files locally and make sure they work as intended (M10)
+- [x] Write one or multiple configurations files for your experiments (M11)
+- [x] Used Hydra to load the configurations and manage your hyperparameters (M11)
+- [ ] Use profiling to optimize your code (M12)
+- [x] Use logging to log important events in your code (M14)
+- [x] Use Weights & Biases to log training progress and other important metrics/artifacts in your code (M14)
+- [ ] Consider running a hyperparameter optimization sweep (M14)
+- [x] Use PyTorch-lightning (if applicable) to reduce the amount of boilerplate in your code (M15)
 
 ### Week 2
 
-* [x] Write unit tests related to the data part of your code (M16)
-* [x] Write unit tests related to model construction and or model training (M16)
-* [x] Calculate the code coverage (M16)
-* [x] Get some continuous integration running on the GitHub repository (M17)
-* [x] Add caching and multi-os/python/pytorch testing to your continuous integration (M17)
-* [x] Add a linting step to your continuous integration (M17)
-* [x] Add pre-commit hooks to your version control setup (M18)
-* [ ] Add a continues workflow that triggers when data changes (M19)
-* [ ] Add a continues workflow that triggers when changes to the model registry is made (M19)
-* [x] Create a data storage in GCP Bucket for your data and link this with your data version control setup (M21)
-* [x] Create a trigger workflow for automatically building your docker images (M21)
-* [x] Get your model training in GCP using either the Engine or Vertex AI (M21)
-* [x] Create a FastAPI application that can do inference using your model (M22)
-* [x] Deploy your model in GCP using either Functions or Run as the backend (M23)
-* [ ] Write API tests for your application and set up continuous integration for these (M24)
-* [ ] Load test your application (M24)
-* [ ] Create a more specialized ML-deployment API using either ONNX or BentoML, or both (M25)
-* [x] Create a frontend for your API (M26)
+- [x] Write unit tests related to the data part of your code (M16)
+- [x] Write unit tests related to model construction and or model training (M16)
+- [x] Calculate the code coverage (M16)
+- [x] Get some continuous integration running on the GitHub repository (M17)
+- [x] Add caching and multi-os/python/pytorch testing to your continuous integration (M17)
+- [x] Add a linting step to your continuous integration (M17)
+- [x] Add pre-commit hooks to your version control setup (M18)
+- [ ] Add a continues workflow that triggers when data changes (M19)
+- [ ] Add a continues workflow that triggers when changes to the model registry is made (M19)
+- [x] Create a data storage in GCP Bucket for your data and link this with your data version control setup (M21)
+- [x] Create a trigger workflow for automatically building your docker images (M21)
+- [x] Get your model training in GCP using either the Engine or Vertex AI (M21)
+- [x] Create a FastAPI application that can do inference using your model (M22)
+- [x] Deploy your model in GCP using either Functions or Run as the backend (M23)
+- [ ] Write API tests for your application and set up continuous integration for these (M24)
+- [ ] Load test your application (M24)
+- [ ] Create a more specialized ML-deployment API using either ONNX or BentoML, or both (M25)
+- [x] Create a frontend for your API (M26)
 
 ### Week 3
 
-* [ ] Check how robust your model is towards data drifting (M27)
-* [ ] Deploy to the cloud a drift detection API (M27)
-* [ ] Instrument your API with a couple of system metrics (M28)
-* [ ] Setup cloud monitoring of your instrumented application (M28)
-* [ ] Create one or more alert systems in GCP to alert you if your app is not behaving correctly (M28)
-* [x] If applicable, optimize the performance of your data loading using distributed data loading (M29)
-* [x] If applicable, optimize the performance of your training pipeline by using distributed training (M30)
-* [ ] Play around with quantization, compilation and pruning for you trained models to increase inference speed (M31)
+- [ ] Check how robust your model is towards data drifting (M27)
+- [ ] Deploy to the cloud a drift detection API (M27)
+- [ ] Instrument your API with a couple of system metrics (M28)
+- [ ] Setup cloud monitoring of your instrumented application (M28)
+- [ ] Create one or more alert systems in GCP to alert you if your app is not behaving correctly (M28)
+- [x] If applicable, optimize the performance of your data loading using distributed data loading (M29)
+- [x] If applicable, optimize the performance of your training pipeline by using distributed training (M30)
+- [ ] Play around with quantization, compilation and pruning for you trained models to increase inference speed (M31)
 
 ### Extra
 
-* [ ] Write some documentation for your application (M32)
-* [ ] Publish the documentation to GitHub Pages (M32)
-* [ ] Revisit your initial project description. Did the project turn out as you wanted?
-* [ ] Create an architectural diagram over your MLOps pipeline
-* [ ] Make sure all group members have an understanding about all parts of the project
-* [ ] Uploaded all your code to GitHub.
+- [ ] Write some documentation for your application (M32)
+- [ ] Publish the documentation to GitHub Pages (M32)
+- [ ] Revisit your initial project description. Did the project turn out as you wanted?
+- [ ] Create an architectural diagram over your MLOps pipeline
+- [ ] Make sure all group members have an understanding about all parts of the project
+- [ ] Uploaded all your code to GitHub.
 
 ## Group information
 
 ### Question 1
+
 > **Enter the group number you signed up on <learn.inside.dtu.dk>**
 >
 > Answer:
 
 Team 33
 
-
 ### Question 2
+
 > **Enter the study number for each member in the group**
 >
 > Answer:
@@ -162,14 +163,15 @@ Team 33
 s253471, s253033, s253081, johco (s223190), alihaj (s242522)
 
 ### Question 3
+
 > **A requirement to the project is that you include a third-party package not covered in the course. What framework**
 > **did you choose to work with and did it help you complete the project?**
 >
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *We used the third-party framework ... in our project. We used functionality ... and functionality ... from the*
-> *package to do ... and ... in our project*.
+> _We used the third-party framework ... in our project. We used functionality ... and functionality ... from the_
+> _package to do ... and ... in our project_.
 >
 > Answer:
 
@@ -178,7 +180,6 @@ The library we've used in our project is Albumations
 Computer Vision applications to derive new samples for training higher quality
 models. We used it to apply transformations to our input images such as resizing
 and normalizing.
-
 
 ## Coding environment
 
@@ -193,8 +194,8 @@ and normalizing.
 > Recommended answer length: 100-200 words
 >
 > Example:
-> *We used ... for managing our dependencies. The list of dependencies was auto-generated using ... . To get a*
-> *complete copy of our development environment, one would have to run the following commands*
+> _We used ... for managing our dependencies. The list of dependencies was auto-generated using ... . To get a_
+> _complete copy of our development environment, one would have to run the following commands_
 >
 > Answer:
 
@@ -218,9 +219,9 @@ in the root of the repository.
 > Recommended answer length: 100-200 words
 >
 > Example:
-> *From the cookiecutter template we have filled out the ... , ... and ... folder. We have removed the ... folder*
-> *because we did not use any ... in our project. We have added an ... folder that contains ... for running our*
-> *experiments.*
+> _From the cookiecutter template we have filled out the ... , ... and ... folder. We have removed the ... folder_
+> _because we did not use any ... in our project. We have added an ... folder that contains ... for running our_
+> _experiments._
 >
 > Answer:
 
@@ -244,8 +245,8 @@ our main configuration file.
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *We used ... for linting and ... for formatting. We also used ... for typing and ... for documentation. These*
-> *concepts are important in larger projects because ... . For example, typing ...*
+> _We used ... for linting and ... for formatting. We also used ... for typing and ... for documentation. These_
+> _concepts are important in larger projects because ... . For example, typing ..._
 >
 > Answer:
 
@@ -274,8 +275,8 @@ helps catch potential bugs early in the development process.
 > Recommended answer length: 50-100 words.
 >
 > Example:
-> *In total we have implemented X tests. Primarily we are testing ... and ... as these the most critical parts of our*
-> *application but also ... .*
+> _In total we have implemented X tests. Primarily we are testing ... and ... as these the most critical parts of our_
+> _application but also ... ._
 >
 > Answer:
 
@@ -293,8 +294,8 @@ be tested anyway.
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *The total code coverage of code is X%, which includes all our source code. We are far from 100% coverage of our **
-> *code and even if we were then...*
+> *The total code coverage of code is X%, which includes all our source code. We are far from 100% coverage of our \*\*
+> *code and even if we were then...\*
 >
 > Answer:
 
@@ -314,8 +315,8 @@ after the other could still cause bugs, particularly in stateful applications.
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *We made use of both branches and PRs in our project. In our group, each member had an branch that they worked on in*
-> *addition to the main branch. To merge code we ...*
+> _We made use of both branches and PRs in our project. In our group, each member had an branch that they worked on in_
+> _addition to the main branch. To merge code we ..._
 >
 > Answer:
 
@@ -339,8 +340,8 @@ potentially help them in their own tasks.
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *We did make use of DVC in the following way: ... . In the end it helped us in ... for controlling ... part of our*
-> *pipeline*
+> _We did make use of DVC in the following way: ... . In the end it helped us in ... for controlling ... part of our_
+> _pipeline_
 >
 > Answer:
 
@@ -349,15 +350,15 @@ TODO: @Ari
 ### Question 11
 
 > **Discuss you continuous integration setup. What kind of continuous integration are you running (unittesting,**
-> **linting, etc.)? Do you test multiple operating systems, Python  version etc. Do you make use of caching? Feel free**
+> **linting, etc.)? Do you test multiple operating systems, Python version etc. Do you make use of caching? Feel free**
 > **to insert a link to one of your GitHub actions workflow.**
 >
 > Recommended answer length: 200-300 words.
 >
 > Example:
-> *We have organized our continuous integration into 3 separate files: one for doing ..., one for running ... testing*
-> *and one for running ... . In particular for our ..., we used ... .An example of a triggered workflow can be seen*
-> *here: <weblink>*
+> _We have organized our continuous integration into 3 separate files: one for doing ..., one for running ... testing_
+> _and one for running ... . In particular for our ..., we used ... .An example of a triggered workflow can be seen_
+> _here: <weblink>_
 >
 > Answer:
 
@@ -376,7 +377,7 @@ TODO: @Janis
 > Recommended answer length: 50-100 words.
 >
 > Example:
-> *We used a simple argparser, that worked in the following way: Python  my_script.py --lr 1e-3 --batch_size 25*
+> _We used a simple argparser, that worked in the following way: Python my_script.py --lr 1e-3 --batch_size 25_
 >
 > Answer:
 
@@ -390,8 +391,8 @@ TODO: @Ari
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *We made use of config files. Whenever an experiment is run the following happens: ... . To reproduce an experiment*
-> *one would have to do ...*
+> _We made use of config files. Whenever an experiment is run the following happens: ... . To reproduce an experiment_
+> _one would have to do ..._
 >
 > Answer:
 
@@ -407,8 +408,8 @@ TODO: @Ari
 > Recommended answer length: 200-300 words + 1 to 3 screenshots.
 >
 > Example:
-> *As seen in the first image when have tracked ... and ... which both inform us about ... in our experiments.*
-> *As seen in the second image we are also tracking ... and ...*
+> _As seen in the first image when have tracked ... and ... which both inform us about ... in our experiments._
+> _As seen in the second image we are also tracking ... and ..._
 >
 > Answer:
 
@@ -422,8 +423,8 @@ TODO: @Ari
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *For our project we developed several images: one for training, inference and deployment. For example to run the*
-> *training docker image: `docker run trainer:latest lr=1e-3 batch_size=64`. Link to docker file: <weblink>*
+> _For our project we developed several images: one for training, inference and deployment. For example to run the_
+> _training docker image: `docker run trainer:latest lr=1e-3 batch_size=64`. Link to docker file: <weblink>_
 >
 > Answer:
 
@@ -437,8 +438,8 @@ TODO: @Ari
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *Debugging method was dependent on group member. Some just used ... and others used ... . We did a single profiling*
-> *run of our main code at some point that showed ...*
+> _Debugging method was dependent on group member. Some just used ... and others used ... . We did a single profiling_
+> _run of our main code at some point that showed ..._
 >
 > Answer:
 
@@ -455,7 +456,7 @@ TODO: @Ari
 > Recommended answer length: 50-200 words.
 >
 > Example:
-> *We used the following two services: Engine and Bucket. Engine is used for... and Bucket is used for...*
+> _We used the following two services: Engine and Bucket. Engine is used for... and Bucket is used for..._
 >
 > Answer:
 
@@ -481,8 +482,8 @@ Review: @Janis?
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *We used the compute engine to run our ... . We used instances with the following hardware: ... and we started the*
-> *using a custom container: ...*
+> _We used the compute engine to run our ... . We used instances with the following hardware: ... and we started the_
+> _using a custom container: ..._
 >
 > Answer:
 
@@ -561,8 +562,8 @@ be seen with a Ref as we finalized the setup.
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *We managed to train our model in the cloud using the Engine. We did this by ... . The reason we choose the Engine*
-> *was because ...*
+> _We managed to train our model in the cloud using the Engine. We did this by ... . The reason we choose the Engine_
+> _was because ..._
 >
 > Answer:
 
@@ -578,8 +579,8 @@ TODO: @Ari
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *We did manage to write an API for our model. We used FastAPI to do this. We did this by ... . We also added ...*
-> *to the API to make it more ...*
+> _We did manage to write an API for our model. We used FastAPI to do this. We did this by ... . We also added ..._
+> _to the API to make it more ..._
 >
 > Answer:
 
@@ -603,9 +604,9 @@ at the latest versioned state.
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *For deployment we wrapped our model into application using ... . We first tried locally serving the model, which*
-> *worked. Afterwards we deployed it in the cloud, using ... . To invoke the service an user would call*
-> *`curl -X POST -F "file=@file.json"<weburl>`*
+> _For deployment we wrapped our model into application using ... . We first tried locally serving the model, which_
+> _worked. Afterwards we deployed it in the cloud, using ... . To invoke the service an user would call_
+> _`curl -X POST -F "file=@file.json"<weburl>`_
 >
 > Answer:
 
@@ -631,8 +632,8 @@ The returned payload is a JSON with the fields `calories`, `fat_g`, `protein_g`,
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *For unit testing we used ... and for load testing we used ... . The results of the load testing showed that ...*
-> *before the service crashed.*
+> _For unit testing we used ... and for load testing we used ... . The results of the load testing showed that ..._
+> _before the service crashed._
 >
 > Answer:
 
@@ -646,8 +647,8 @@ TODO: @Johanne
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *We did not manage to implement monitoring. We would like to have monitoring implemented such that over time we could*
-> *measure ... and ... that would inform us about this ... behaviour of our application.*
+> _We did not manage to implement monitoring. We would like to have monitoring implemented such that over time we could_
+> _measure ... and ... that would inform us about this ... behaviour of our application._
 >
 > Answer:
 
@@ -665,8 +666,8 @@ TODO: @Johanne
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *Group member 1 used ..., Group member 2 used ..., in total ... credits was spend during development. The service*
-> *costing the most was ... due to ... . Working in the cloud was ...*
+> _Group member 1 used ..., Group member 2 used ..., in total ... credits was spend during development. The service_
+> _costing the most was ... due to ... . Working in the cloud was ..._
 >
 > Answer:
 
@@ -681,8 +682,8 @@ TODO: @Johanne
 > Recommended answer length: 0-200 words.
 >
 > Example:
-> *We implemented a frontend for our API. We did this because we wanted to show the user ... . The frontend was*
-> *implemented using ...*
+> _We implemented a frontend for our API. We did this because we wanted to show the user ... . The frontend was_
+> _implemented using ..._
 >
 > Answer:
 
@@ -700,8 +701,8 @@ form to upload an image and returns the predicted nutritional values beside it.
 >
 > Example:
 >
-> *The starting point of the diagram is our local setup, where we integrated ... and ... and ... into our code.*
-> *Whenever we commit code and push to GitHub, it auto triggers ... and ... . From there the diagram shows ...*
+> _The starting point of the diagram is our local setup, where we integrated ... and ... and ... into our code._
+> _Whenever we commit code and push to GitHub, it auto triggers ... and ... . From there the diagram shows ..._
 >
 > Answer:
 
@@ -715,7 +716,7 @@ TODO: @Ari
 > Recommended answer length: 200-400 words.
 >
 > Example:
-> *The biggest challenges in the project was using ... tool to do ... . The reason for this was ...*
+> _The biggest challenges in the project was using ... tool to do ... . The reason for this was ..._
 >
 > Answer:
 
@@ -730,11 +731,57 @@ TODO: @all
 > Recommended answer length: 50-300 words.
 >
 > Example:
-> *Student sXXXXXX was in charge of developing of setting up the initial cookie cutter project and developing of the*
-> *docker containers for training our applications.*
-> *Student sXXXXXX was in charge of training our models in the cloud and deploying them afterwards.*
-> *All members contributed to code by...*
-> *We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code.*
+> _Student sXXXXXX was in charge of developing of setting up the initial cookie cutter project and developing of the_
+> _docker containers for training our applications._
+> _Student sXXXXXX was in charge of training our models in the cloud and deploying them afterwards._
+> _All members contributed to code by..._
+> _We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code._
 > Answer:
 
 TODO: @all
+
+---
+
+## run locally
+
+### backend
+
+```bash
+uv run uvicorn wizard_ops.api:app \
+  --reload \
+  --host 0.0.0.0 \
+  --port 8000
+```
+
+### frontend
+
+```bash
+uv run streamlit run src/wizard_ops/frontend/frontend.py
+```
+
+## docker
+
+### backend
+
+```bash
+docker build -t backend -f dockerfiles/api.dockerfile .
+```
+
+### frontend
+
+```bash
+docker build -t acherrydev/wizard_ops_fe -f dockerfiles/frontend.dockerfile .
+```
+
+#### build and run
+
+```bash
+docker build -t acherrydev/wizard_ops_fe -f dockerfiles/frontend.dockerfile . \
+&& docker run --rm -p 8001:8001 -e "PORT=8001" acherrydev/wizard_ops_fe
+```
+
+#### publish
+
+```bash
+docker push acherrydev/wizard_ops_fe
+```

@@ -1,6 +1,34 @@
 seed: 43
 mode: "train" # options: "train", "evaluate"
 
+# GCP Configuration
+gcp:
+  project_id: "dtumlops-484413"
+  region: "europe-west4"
+  bucket: "dtu-kfc-bucket"
+  artifact_registry: "europe-west4-docker.pkg.dev/dtumlops-484413/container-registry"
+
+  # DVC remote settings
+  dvc_remote: "dtu_kfc_gs"
+  dvc_remote_url: "gs://dtu-kfc-bucket/" # DVC automatically uses /files subdirectory
+
+  # Service configuration
+  api_service_name: "wizard-ops-api"
+  frontend_service_name: "streamlit-app"
+  api_memory: "2Gi"
+  frontend_memory: "512Mi"
+
+# Checkpoint configuration
+# Path format: checkpoints/nutrition_{backbone}_{experiment_name}/final_model.ckpt
+# Training saves: final_model.ckpt (Lightning), final_model.pth (torch), final_model.onnx (if enabled)
+checkpoint:
+  # Latest checkpoint to use for serving (update after training)
+  serving_checkpoint: "checkpoints/nutrition_resnet18_default_experiment/final_model.ckpt"
+  # Alternative full model (.pth)
+  serving_pth: "checkpoints/nutrition_resnet18_default_experiment/final_model.pth"
+  # Alternative ONNX model
+  serving_onnx: "checkpoints/nutrition_resnet18_default_experiment/final_model.onnx"
+
 data:
   h5_path: "data.nosync/images_224.h5"
   dish_csv_path: "configs/metadata/data_stats.csv"

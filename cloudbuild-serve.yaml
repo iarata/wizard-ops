@@ -1,0 +1,163 @@
+# Cloud Build configuration for serving-only deployment
+# Use this when you only want to update backend and/or frontend without retraining
+# Trigger: On push to main with changes in src/wizard_ops/backend/** or src/wizard_ops/frontend/**
+#
+# Settings from configs/config.yaml are used as defaults
+
+substitutions:
+  _REGION: "europe-west4"
+  _ARTIFACT_REGISTRY: "europe-west4-docker.pkg.dev/${PROJECT_ID}/container-registry"
+  _API_MEMORY: "2Gi"
+  _FRONTEND_MEMORY: "512Mi"
+  _DEPLOY_BACKEND: "true"
+  _DEPLOY_FRONTEND: "true"
+  _BUCKET: "dtu-kfc-bucket"
+  # Model checkpoint path format: checkpoints/nutrition_{backbone}_{experiment_name}/final_model.ckpt
+  _CHECKPOINT_BLOB: "checkpoints/nutrition_resnet18_default_experiment/final_model.ckpt"
+
+steps:
+  # ==================== BACKEND DEPLOYMENT ====================
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-api-image"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_DEPLOY_BACKEND}" != "true" ]; then
+          echo "Skipping backend build..."
+          exit 0
+        fi
+        docker build -f dockerfiles/api.dockerfile \
+          --build-arg BUCKET_NAME=${_BUCKET} \
+          --build-arg CHECKPOINT_BLOB=${_CHECKPOINT_BLOB} \
+          -t ${_ARTIFACT_REGISTRY}/wizard-ops-api:${SHORT_SHA} \
+          -t ${_ARTIFACT_REGISTRY}/wizard-ops-api:latest \
+          .
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-api-image"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_DEPLOY_BACKEND}" != "true" ]; then
+          echo "Skipping backend push..."
+          exit 0
+        fi
+        docker push ${_ARTIFACT_REGISTRY}/wizard-ops-api:${SHORT_SHA}
+        docker push ${_ARTIFACT_REGISTRY}/wizard-ops-api:latest
+    waitFor: ["build-api-image"]
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-api"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_DEPLOY_BACKEND}" != "true" ]; then
+          echo "Skipping backend deploy..."
+          exit 0
+        fi
+        gcloud run deploy wizard-ops-api \
+          --image ${_ARTIFACT_REGISTRY}/wizard-ops-api:${SHORT_SHA} \
+          --region ${_REGION} \
+          --platform managed \
+          --memory ${_API_MEMORY} \
+          --allow-unauthenticated \
+          --set-env-vars "BUCKET_NAME=${_BUCKET},CHECKPOINT_BLOB=${_CHECKPOINT_BLOB}"
+    waitFor: ["push-api-image"]
+
+  # Get backend URL for frontend
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "get-backend-url"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        BACKEND_URL=$$(gcloud run services describe wizard-ops-api --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "")
+        echo "$${BACKEND_URL}" > /workspace/backend_url.txt
+        echo "Backend URL: $${BACKEND_URL}"
+    waitFor: ["deploy-api"]
+
+  # ==================== FRONTEND DEPLOYMENT ====================
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-frontend-image"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_DEPLOY_FRONTEND}" != "true" ]; then
+          echo "Skipping frontend build..."
+          exit 0
+        fi
+        docker build -f dockerfiles/frontend.dockerfile \
+          -t ${_ARTIFACT_REGISTRY}/streamlit-app:${SHORT_SHA} \
+          -t ${_ARTIFACT_REGISTRY}/streamlit-app:latest \
+          .
+    waitFor: ["get-backend-url"]
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-frontend-image"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_DEPLOY_FRONTEND}" != "true" ]; then
+          echo "Skipping frontend push..."
+          exit 0
+        fi
+        docker push ${_ARTIFACT_REGISTRY}/streamlit-app:${SHORT_SHA}
+        docker push ${_ARTIFACT_REGISTRY}/streamlit-app:latest
+    waitFor: ["build-frontend-image"]
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-frontend"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_DEPLOY_FRONTEND}" != "true" ]; then
+          echo "Skipping frontend deploy..."
+          exit 0
+        fi
+        BACKEND_URL=$$(cat /workspace/backend_url.txt)
+        ENV_VARS=""
+        if [ -n "$${BACKEND_URL}" ]; then
+          ENV_VARS="--set-env-vars=WIZARD_BACKEND=$${BACKEND_URL}"
+        fi
+        gcloud run deploy streamlit-app \
+          --image ${_ARTIFACT_REGISTRY}/streamlit-app:${SHORT_SHA} \
+          --region ${_REGION} \
+          --platform managed \
+          --memory ${_FRONTEND_MEMORY} \
+          --allow-unauthenticated \
+          $${ENV_VARS}
+    waitFor: ["push-frontend-image"]
+
+  # Deployment summary
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deployment-summary"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        echo "============================================"
+        echo "        SERVING DEPLOYMENT COMPLETE        "
+        echo "============================================"
+        BACKEND_URL=$$(gcloud run services describe wizard-ops-api --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "Not deployed")
+        FRONTEND_URL=$$(gcloud run services describe streamlit-app --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "Not deployed")
+        echo ""
+        echo "Backend API:  $${BACKEND_URL}"
+        echo "Frontend App: $${FRONTEND_URL}"
+        echo ""
+        echo "Commit: ${SHORT_SHA}"
+        echo "============================================"
+    waitFor: ["deploy-frontend"]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: "E2_HIGHCPU_8"
+
+timeout: "1800s"

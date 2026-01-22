@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
+from typing import Optional
 
 import typer
 
 from wizard_ops import get_version
+from wizard_ops.data_cli import app as data_app
 from wizard_ops.hydra_app import main as hydra_main
 
 app = typer.Typer(add_completion=False, help="wizard_ops command-line interface")
+app.add_typer(data_app, name="data", help="Data utilities")
 
 
 def _version_callback(value: bool) -> None:
@@ -40,13 +44,6 @@ def _run_hydra(forwarded: list[str]) -> None:
         sys.argv = old_argv
 
 
-def _split_on_double_dash(args: list[str]) -> tuple[list[str], list[str]]:
-    if "--" not in args:
-        return args, []
-    i = args.index("--")
-    return args[:i], args[i + 1 :]
-
-
 @app.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
@@ -63,27 +60,53 @@ def evaluate(ctx: typer.Context) -> None:
     _run_hydra(["mode=evaluate", *ctx.args])
 
 
-@app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-)
-def data(ctx: typer.Context) -> None:
+@app.command()
+def serve(
+    host: str = typer.Option("0.0.0.0", "--host", "-h", help="Host to bind to"),
+    port: int = typer.Option(8080, "--port", "-p", help="Port to bind to"),
+    reload: bool = typer.Option(False, "--reload", "-r", help="Enable auto-reload for development"),
+    checkpoint: Optional[str] = typer.Option(None, "--checkpoint", "-c", help="Path to model checkpoint (overrides config)"),
+) -> None:
+    """Start the API server for model serving.
+    
+    Uses configuration from configs/config.yaml for checkpoint paths and GCP settings.
     """
-    Data utilities.
+    import os
 
-    Convention:
-      - Hydra args first
-      - then `--`
-      - then data-subcommand args (parsed by Typer inside run_data_cli)
-    """
-    hydra_args, data_args = _split_on_double_dash(list(ctx.args))
+    import uvicorn
 
-    # Pass data args to the data CLI runner via a simple global.
-    # (You can also store them in a module-level variable or similar.)
-    from wizard_ops.data_cli import set_data_argv
+    from configs import get_config
 
-    set_data_argv(data_args)
-
-    _run_hydra(["mode=data", *hydra_args])
+    # Load config
+    config = get_config()
+    
+    # Set environment variables from config for the API to use
+    if checkpoint:
+        # Use local checkpoint directly
+        os.environ["CHECKPOINT_LOCAL"] = str(Path(checkpoint).resolve())
+    else:
+        # Use config values
+        serving_checkpoint = config.get("checkpoint", {}).get("serving_checkpoint", "")
+        if serving_checkpoint and Path(serving_checkpoint).exists():
+            os.environ["CHECKPOINT_LOCAL"] = str(Path(serving_checkpoint).resolve())
+    
+    # Set GCP bucket/blob from config
+    gcp_config = config.get("gcp", {})
+    if "bucket" in gcp_config:
+        os.environ.setdefault("BUCKET_NAME", gcp_config["bucket"])
+    
+    checkpoint_config = config.get("checkpoint", {})
+    if "serving_checkpoint" in checkpoint_config:
+        # Extract blob name from the checkpoint path
+        os.environ.setdefault("CHECKPOINT_BLOB", checkpoint_config["serving_checkpoint"])
+    
+    typer.echo(f"Starting API server on {host}:{port}")
+    uvicorn.run(
+        "wizard_ops.backend.api:app",
+        host=host,
+        port=port,
+        reload=reload,
+    )
 
 
 def main() -> None:

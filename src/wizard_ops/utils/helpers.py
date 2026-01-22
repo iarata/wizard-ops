@@ -3,7 +3,9 @@ import logging
 from pathlib import Path
 
 import albumentations as A
+import numpy as np
 import torch
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -120,3 +122,47 @@ def get_augmentation_transforms(image_size: int = 224) -> A.Compose:
         ),
         A.ToTensorV2(),
     ])
+    
+
+# - MARK: Preprocessing dataset
+def process_single_dish(
+    dish_id: str,
+    data_dir: Path,
+    image_size: int,
+) -> tuple[str, np.ndarray] | None:
+    """Process all images for a single dish.
+    
+    Args:
+        dish_id: The dish identifier
+        data_dir: Root data directory
+        image_size: Target image size
+        
+    Returns:
+        Tuple of (dish_id, images_array) or None if failed
+    """
+    dish_dir = data_dir / dish_id
+    
+    # Pre-allocate array for this dish: (4 cameras, 5 frames, 3 channels, H, W)
+    dish_images = np.zeros((4, 5, 3, image_size, image_size), dtype=np.uint8)
+    
+    try:
+        for cam_idx, cam in enumerate(["A", "B", "C", "D"]):
+            for frame_idx in range(5):
+                frame_num = frame_idx + 1
+                p = dish_dir / f"camera_{cam}_frame_{frame_num:03d}.jpeg"
+                if not p.exists():
+                    p = dish_dir / f"camera_{cam}_frame_{frame_num:03d}.jpg"
+                
+                # Load and resize image
+                with Image.open(p) as img:
+                    img = img.convert("RGB")
+                    img = img.resize((image_size, image_size), Image.BILINEAR)
+                    arr = np.array(img)
+                
+                # Store as (C, H, W) - channels first for PyTorch
+                dish_images[cam_idx, frame_idx] = arr.transpose(2, 0, 1)
+        
+        return (dish_id, dish_images)
+    except Exception as e:
+        logger.warning(f"Failed to process dish {dish_id}: {e}")
+        return None

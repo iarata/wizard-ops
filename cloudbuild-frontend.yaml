@@ -1,0 +1,110 @@
+# Cloud Build configuration for Frontend deployment
+# Triggers: On push to main, changes to src/wizard_ops/frontend/**, or manual
+# This pipeline builds and deploys the Streamlit frontend to Cloud Run
+#
+# Settings from configs/config.yaml are used as defaults
+
+substitutions:
+  _SERVICE_NAME: "streamlit-app"
+  _REGION: "europe-west4"
+  _ARTIFACT_REGISTRY: "europe-west4-docker.pkg.dev/${PROJECT_ID}/container-registry"
+  _MEMORY: "512Mi"
+  _CPU: "1"
+  _MIN_INSTANCES: "0"
+  _MAX_INSTANCES: "5"
+  # Backend URL can be auto-discovered or explicitly set
+  _BACKEND_URL: ""
+
+steps:
+  # Step 1: Build the frontend Docker image
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-frontend-image"
+    args:
+      - "build"
+      - "-f"
+      - "dockerfiles/frontend.dockerfile"
+      - "-t"
+      - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:${SHORT_SHA}"
+      - "-t"
+      - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:latest"
+      - "."
+
+  # Step 2: Push image to Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-frontend-image"
+    args:
+      - "push"
+      - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:${SHORT_SHA}"
+    waitFor: ["build-frontend-image"]
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-frontend-image-latest"
+    args:
+      - "push"
+      - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:latest"
+    waitFor: ["build-frontend-image"]
+
+  # Step 3: Get backend URL if not provided
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "get-backend-url"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ -n "${_BACKEND_URL}" ]; then
+          echo "${_BACKEND_URL}" > /workspace/backend_url.txt
+        else
+          BACKEND_URL=$$(gcloud run services describe wizard-ops-api --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "")
+          if [ -n "$${BACKEND_URL}" ]; then
+            echo "$${BACKEND_URL}" > /workspace/backend_url.txt
+          else
+            echo "Warning: Backend URL not found. Frontend will discover it at runtime."
+            echo "" > /workspace/backend_url.txt
+          fi
+        fi
+    waitFor: ["push-frontend-image"]
+
+  # Step 4: Deploy to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-frontend"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        BACKEND_URL=$$(cat /workspace/backend_url.txt)
+        ENV_VARS=""
+        if [ -n "$${BACKEND_URL}" ]; then
+          ENV_VARS="--set-env-vars=WIZARD_BACKEND=$${BACKEND_URL}"
+        fi
+
+        gcloud run deploy ${_SERVICE_NAME} \
+          --image ${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:${SHORT_SHA} \
+          --region ${_REGION} \
+          --platform managed \
+          --memory ${_MEMORY} \
+          --cpu ${_CPU} \
+          --min-instances ${_MIN_INSTANCES} \
+          --max-instances ${_MAX_INSTANCES} \
+          --allow-unauthenticated \
+          $${ENV_VARS}
+    waitFor: ["get-backend-url"]
+
+  # Step 5: Output the service URL
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "get-service-url"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        SERVICE_URL=$$(gcloud run services describe ${_SERVICE_NAME} --region=${_REGION} --format='value(status.url)')
+        echo "Frontend deployed at: $${SERVICE_URL}"
+    waitFor: ["deploy-frontend"]
+
+images:
+  - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:${SHORT_SHA}"
+  - "${_ARTIFACT_REGISTRY}/${_SERVICE_NAME}:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: "1200s"

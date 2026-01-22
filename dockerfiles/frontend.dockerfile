@@ -1,13 +1,21 @@
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS base
 
-COPY uv.lock uv.lock
-COPY ../src/wizard_ops/frontend/pyproject.toml pyproject.toml
+WORKDIR /app
 
+# Install only the dependencies needed for frontend (not the full wizard_ops package)
+RUN uv pip install --system \
+    streamlit>=1.30.0 \
+    requests>=2.32.5 \
+    google-cloud-run>=0.14.0
 
+# Copy frontend code
 COPY src/wizard_ops/frontend/frontend.py frontend.py
 
+# Environment variable for backend URL (can be overridden at runtime)
+ENV WIZARD_BACKEND=""
 
-RUN uv sync --frozen
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8501}/_stcore/health || exit 1
 
-#ENTRYPOINT ["uv", "run", "streamlit", "run", "frontend.py", "--server.port", "$PORT", "--server.address=0.0.0.0"]
-ENTRYPOINT ["sh", "-c", "echo 'PORT is:' ${PORT} && exec uv run streamlit run frontend.py --server.address=0.0.0.0 --server.fileWatcherType=none --server.port ${PORT}"]
+ENTRYPOINT ["sh", "-c", "exec streamlit run frontend.py --server.address=0.0.0.0 --server.fileWatcherType=none --server.port=${PORT:-8501}"]

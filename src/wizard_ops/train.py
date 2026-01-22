@@ -141,7 +141,10 @@ def train(
     trainer.fit(model, datamodule=dataset)
 
     os.makedirs(run_dir, exist_ok=True)
+    # Save full model object (.pth)
     torch.save(model, str(run_dir / "final_model.pth"))
+    # Save Lightning checkpoint (.ckpt) for proper loading with LightningModule.load_from_checkpoint
+    # trainer.save_checkpoint(str(run_dir / "final_model.ckpt")) # dummy don't have save checkpoint
 
     if config.get("train", {}).get("export_onnx", False) and hasattr(model, "to_onnx"):
         # Use the legacy exporter (dynamo=False). The dynamo/torch.export-based

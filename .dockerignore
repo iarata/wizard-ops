@@ -1,0 +1,66 @@
+# Data directories - should be pulled via DVC during training
+data.nosync/
+data_old.nosync/
+data/
+
+# Checkpoints - should be managed separately
+checkpoints/
+
+# Virtual environments
+.venv/
+.venv.nosync/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Git
+.git/
+.gitignore
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Logs and outputs
+outputs/
+wandb/
+reports/
+logs/
+
+# Documentation
+docs/
+
+# DVC files (we copy .dvc/ directory, but not tracked data)
+*.dvc
+!.dvc/
+
+# Credentials (never include in image)
+*.json
+.env*
+
+# Other
+*.nosync
+tests/
+.devcontainer/
+.pre-commit-config.yaml
+Makefile
+*.md
+!README.md
+*.sh
+*.yaml
+!configs/*.yaml
