@@ -1,20 +1,29 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
+import subprocess
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from functools import partial
 from pathlib import Path
 from typing import Annotated
 
-import kagglehub as kh
+import dvc as dvc
+import h5py
+import numpy as np
 import pandas as pd
 import typer
-from omegaconf import DictConfig
-from typer.main import get_command
+from tqdm import tqdm
+
+from wizard_ops.utils import process_single_dish
 
 app = typer.Typer(help="Dataset utilities")
 
 _DATA_ARGV: list[str] = []
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def set_data_argv(argv: list[str]) -> None:
     global _DATA_ARGV
@@ -22,7 +31,6 @@ def set_data_argv(argv: list[str]) -> None:
     
 @app.callback()
 def _data_root(ctx: typer.Context) -> None:
-    # cfg will be injected via Click obj (see run_data_cli)
     pass
 
 # Path to metadata files
@@ -40,6 +48,136 @@ _DISH_TOTAL_COLUMNS = [
     "total_protein",
     "num_ingrs",
 ]
+
+# ------------- MARK: - Preprocess dish images into HDF5 file -------------
+@app.command("generate-hdf5")
+def preprocess_dataset(
+    data_dir: Annotated[str, typer.Option("--data-dir", "-d", help="Root directory containing dish_* folders")],
+    csv_path: Annotated[str, typer.Option("--csv-path", "-c", help="Path to data_stats.csv")],
+    output_path: Annotated[Path, typer.Option("--output-path", "-o", help="Output HDF5 file path")],
+    image_size: Annotated[int, typer.Option("--image-size", "-s", help="Target image size (square)")] = 224,
+    use_only_complete: Annotated[bool, typer.Option("--use-only-complete", "-u", help="Only include dishes with all 20 images")] = True,
+    num_workers: Annotated[int | None, typer.Option("--num-workers", "-w", help="Number of parallel workers (default: CPU count)")] = None,
+) -> None:
+    """
+    Preprocess all dish images into an HDF5 file using parallel processing.
+    
+    Args:
+        data_dir: Root directory containing dish_* folders
+        csv_path: Path to data_stats.csv
+        output_path: Output HDF5 file path
+        image_size: Target image size (square)
+        use_only_complete: Only include dishes with all 20 images
+        num_workers: Number of parallel workers (default: CPU count)
+    """
+    data_dir = Path(data_dir)
+    assert data_dir.exists(), f"Data directory {data_dir} does not exist."
+    
+    csv_path = Path(csv_path)
+    assert csv_path.exists(), f"CSV path {csv_path} does not exist."
+    
+    output_path = Path(output_path)
+    # check if output_path exists if not create parent dirs
+    if not output_path.parent.exists():
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    if num_workers is None:
+        num_workers = os.cpu_count() or 4
+    
+    # Load metadata
+    df = pd.read_csv(csv_path, dtype={"dish_id": str})
+    logger.info(f"Loaded {len(df)} dishes from metadata")
+    
+    # Filter to complete dishes if requested
+    if use_only_complete:
+        mask = (
+            (df["num_images_camera_A"] == 5) &
+            (df["num_images_camera_B"] == 5) &
+            (df["num_images_camera_C"] == 5) &
+            (df["num_images_camera_D"] == 5)
+        )
+        df = df[mask].reset_index(drop=True)
+        logger.info(f"Filtered to {len(df)} dishes with complete camera sets")
+    
+    # Collect valid dishes (quick filesystem check)
+    valid_dishes = []
+    for dish_id in tqdm(df["dish_id"], desc="Validating dishes"):
+        dish_dir = data_dir / dish_id
+        if not dish_dir.exists():
+            continue
+        
+        # Check all 20 images exist
+        all_exist = True
+        for cam in ["A", "B", "C", "D"]:
+            for frame in range(1, 6):
+                p = dish_dir / f"camera_{cam}_frame_{frame:03d}.jpeg"
+                if not p.exists():
+                    p = dish_dir / f"camera_{cam}_frame_{frame:03d}.jpg"
+                if not p.exists():
+                    all_exist = False
+                    break
+            if not all_exist:
+                break
+        
+        if all_exist:
+            valid_dishes.append(dish_id)
+    
+    logger.info(f"Found {len(valid_dishes)} valid dishes with all images")
+    logger.info(f"Processing with {num_workers} workers...")
+    
+    # Create output directory
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Process images in parallel and collect results
+    process_fn = partial(process_single_dish, data_dir=data_dir, image_size=image_size)
+    
+    results = []
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        # Submit all tasks
+        futures = {executor.submit(process_fn, dish_id): dish_id for dish_id in valid_dishes}
+        
+        # Collect results with progress bar
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Processing images"):
+            result = future.result()
+            if result is not None:
+                results.append(result)
+    
+    # Sort results by dish_id to ensure deterministic order
+    results.sort(key=lambda x: x[0])
+    
+    logger.info(f"Successfully processed {len(results)} dishes")
+    
+    # Write to HDF5 file
+    logger.info("Writing to HDF5 file...")
+    with h5py.File(output_path, "w") as f:
+        # Store metadata
+        f.attrs["image_size"] = image_size
+        f.attrs["num_dishes"] = len(results)
+        f.attrs["cameras"] = ["A", "B", "C", "D"]
+        f.attrs["frames_per_camera"] = 5
+        
+        # Create datasets
+        # Shape: (num_dishes, 4 cameras, 5 frames, 3 channels, H, W)
+        images = f.create_dataset(
+            "images",
+            shape=(len(results), 4, 5, 3, image_size, image_size),
+            dtype=np.uint8,
+            chunks=(1, 4, 5, 3, image_size, image_size),
+            compression="lzf",
+        )
+        
+        # Store dish IDs as variable-length strings
+        dt = h5py.special_dtype(vlen=str)
+        dish_ids = f.create_dataset("dish_ids", (len(results),), dtype=dt)
+        
+        # Write all results
+        for i, (dish_id, dish_images) in enumerate(tqdm(results, desc="Writing to HDF5")):
+            dish_ids[i] = dish_id
+            images[i] = dish_images
+    
+    logger.info(f"Saved preprocessed images to {output_path}")
+    logger.info(f"File size: {output_path.stat().st_size / (1024**3):.2f} GB")
+
 
 
 def load_dish_metadata(
@@ -107,24 +245,29 @@ def load_ingredients_metadata(path: str | Path = INGREDIENTS_METADATA) -> pd.Dat
     return pd.read_csv(path)
 
 
-# MARK: - Typer CLI commands to download the dataset from Kaggle
+# MARK: - Downloads the Nutrition Dataset using DVC
 @app.command("download")
-def download(dir: Annotated[str, typer.Option("--dir", "-d", help="Directory to download the dataset to")]):
-    """Download the Nutrition Dataset from Kaggle."""
-    path = Path(dir)
+def download(
+    dvc_tracked_folder: Annotated[str, typer.Option("--dvc-folder", "-d", help="A DVC-tracked folder path to the Nutrition Dataset (either data.nosync or checkpoints)")] = "data.nosync",
+    args_to_dvc: Annotated[list[str], typer.Option("--dvc-args", "-a", help="Additional arguments to pass to DVC")]= [],
+):
+    """Download the Nutrition Dataset using DVC."""
+    
+    logger.info(f"Downloading dataset from DVC path: {dvc_tracked_folder}")
+    
     try:
-        if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
-            kh_path = kh.dataset_download(
-                "zygmuntyt/nutrition5k-dataset-side-angle-images",
-            )
-            os.rename(kh_path, path)
-
-        typer.echo(f"Dataset downloaded to {dir}")
-    except Exception as e:
-        typer.echo(f"Error downloading dataset: {e}")
-        raise typer.Exit(code=1) from e
-
+        result = subprocess.run(
+            ["dvc", "pull", dvc_tracked_folder] + args_to_dvc,
+            check=True,
+        )
+        logger.info(f"DVC pull output: {result.stdout}")
+        logger.info(f"Successfully downloaded DVC-tracked folder: {dvc_tracked_folder}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to download: {e.stderr}")
+        raise typer.Exit(code=1)
+    except FileNotFoundError:
+        logger.error("DVC is not installed or not found in PATH")
+        raise typer.Exit(code=1)
 
 # MARK: - CLI to generate unified dish metadata CSV/parquet
 @app.command("generate-metadata")
@@ -141,6 +284,7 @@ def generate_metadata(
         typer.Option("--max-imgs-per-frame", "-m", help="Maximum number of images per frame type to consider"),
     ] = 2,
 ):
+    """Generate unified dish metadata CSV/parquet file."""
     data_path = Path(data_dir)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)

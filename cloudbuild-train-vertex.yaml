@@ -1,0 +1,83 @@
+# Cloud Build configuration for Vertex AI training
+# Use this for GPU-accelerated training with Vertex AI Custom Jobs
+# This is an alternative to cloudbuild-train.yaml for larger training jobs
+#
+# Settings from configs/config.yaml are used as defaults
+
+substitutions:
+  _REGION: "europe-west4"
+  _BUCKET: "dtu-kfc-bucket"
+  _ARTIFACT_REGISTRY: "europe-west4-docker.pkg.dev/${PROJECT_ID}/container-registry"
+  # Training overrides (defaults come from config.yaml)
+  _EXPERIMENT_NAME: ""
+  _BACKBONE: ""
+  _MAX_EPOCHS: ""
+  _BATCH_SIZE: ""
+  _FAST_DEV_RUN: ""
+  # Vertex AI machine configuration
+  _MACHINE_TYPE: "n1-standard-8"
+  _ACCELERATOR_TYPE: "NVIDIA_TESLA_T4"
+  _ACCELERATOR_COUNT: "1"
+
+steps:
+  # Step 1: Build training Docker image
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-train-image"
+    args:
+      - "build"
+      - "-f"
+      - "dockerfiles/train.dockerfile"
+      - "-t"
+      - "${_ARTIFACT_REGISTRY}/wizard-ops-train:${SHORT_SHA}"
+      - "-t"
+      - "${_ARTIFACT_REGISTRY}/wizard-ops-train:latest"
+      - "."
+
+  # Step 2: Push training image to Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-train-image"
+    args:
+      - "push"
+      - "--all-tags"
+      - "${_ARTIFACT_REGISTRY}/wizard-ops-train"
+    waitFor: ["build-train-image"]
+
+  # Step 3: Submit Vertex AI Custom Training Job
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "submit-vertex-job"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        JOB_NAME="wizard-ops-train-${SHORT_SHA}-$(date +%Y%m%d%H%M%S)"
+
+        gcloud ai custom-jobs create \
+          --region=${_REGION} \
+          --display-name=$${JOB_NAME} \
+          --worker-pool-spec=machine-type=${_MACHINE_TYPE},accelerator-type=${_ACCELERATOR_TYPE},accelerator-count=${_ACCELERATOR_COUNT},replica-count=1,container-image-uri=${_ARTIFACT_REGISTRY}/wizard-ops-train:${SHORT_SHA} \
+          --env-vars="EXPERIMENT_NAME=${_EXPERIMENT_NAME},BACKBONE=${_BACKBONE},MAX_EPOCHS=${_MAX_EPOCHS},BATCH_SIZE=${_BATCH_SIZE},FAST_DEV_RUN=${_FAST_DEV_RUN}" \
+          --service-account="vertex-ai-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+
+        echo "Submitted Vertex AI job: $${JOB_NAME}"
+        echo "Monitor at: https://console.cloud.google.com/vertex-ai/training/custom-jobs?project=${PROJECT_ID}"
+    waitFor: ["push-train-image"]
+
+  # Step 4: Store the experiment metadata
+  - name: "gcr.io/cloud-builders/gsutil"
+    id: "store-metadata"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        echo '{"experiment":"${_EXPERIMENT_NAME}","backbone":"${_BACKBONE}","commit":"${SHORT_SHA}","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","vertex_job":true}' \
+        | gsutil cp - gs://${_BUCKET}/metadata/latest_training.json
+
+images:
+  - "${_ARTIFACT_REGISTRY}/wizard-ops-train:${SHORT_SHA}"
+  - "${_ARTIFACT_REGISTRY}/wizard-ops-train:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: "E2_MEDIUM"
+
+timeout: "1800s" # 30 min to submit job (training runs async on Vertex AI)
