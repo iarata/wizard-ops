@@ -41,6 +41,13 @@ echo "Max Epochs: ${MAX_EPOCHS}"
 echo "Batch Size: ${BATCH_SIZE}"
 echo "Fast Dev Run: ${FAST_DEV_RUN}"
 
+# Cloud Build and other constrained environments can fail with DataLoader shared-memory errors.
+# When doing fast dev runs (smoke tests), force single-process loading.
+EXTRA_ARGS="${EXTRA_HYDRA_ARGS:-}"
+if [ "${FAST_DEV_RUN}" = "true" ]; then
+    EXTRA_ARGS="$EXTRA_ARGS data.num_workers=0"
+fi
+
 # Pull data + current checkpoints from DVC
 echo ""
 echo "Pulling data from DVC (data.nosync.dvc)..."
@@ -59,7 +66,7 @@ uv run wizard_ops train \
     train.max_epochs=${MAX_EPOCHS} \
     data.batch_size=${BATCH_SIZE} \
     train.fast_dev_run=${FAST_DEV_RUN} \
-    ${EXTRA_HYDRA_ARGS:-}
+    ${EXTRA_ARGS}
 
 # Push checkpoints back to DVC
 echo ""

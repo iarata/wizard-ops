@@ -18,6 +18,7 @@ substitutions:
   _MACHINE_TYPE: "n1-standard-8"
   _ACCELERATOR_TYPE: "NVIDIA_TESLA_T4"
   _ACCELERATOR_COUNT: "1"
+  _VERTEX_SERVICE_ACCOUNT: "dtu-kfc-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 
 steps:
   # Step 1: Build training Docker image
@@ -51,15 +52,31 @@ steps:
       - |
         JOB_NAME="wizard-ops-train-${SHORT_SHA}-$(date +%Y%m%d%H%M%S)"
 
-        gcloud ai custom-jobs create \
+        JOB_RESOURCE=$$(gcloud ai custom-jobs create \
           --region=${_REGION} \
           --display-name=$${JOB_NAME} \
           --worker-pool-spec=machine-type=${_MACHINE_TYPE},accelerator-type=${_ACCELERATOR_TYPE},accelerator-count=${_ACCELERATOR_COUNT},replica-count=1,container-image-uri=${_ARTIFACT_REGISTRY}/wizard-ops-train:${SHORT_SHA} \
           --env-vars="EXPERIMENT_NAME=${_EXPERIMENT_NAME},BACKBONE=${_BACKBONE},MAX_EPOCHS=${_MAX_EPOCHS},BATCH_SIZE=${_BATCH_SIZE},FAST_DEV_RUN=${_FAST_DEV_RUN}" \
-          --service-account="vertex-ai-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+          --service-account="${_VERTEX_SERVICE_ACCOUNT}" \
+          --format='value(name)')
 
         echo "Submitted Vertex AI job: $${JOB_NAME}"
+        echo "Vertex job resource: $${JOB_RESOURCE}"
         echo "Monitor at: https://console.cloud.google.com/vertex-ai/training/custom-jobs?project=${PROJECT_ID}"
+
+        echo "Waiting for Vertex AI job to finish..."
+        while true; do
+          STATE=$$(gcloud ai custom-jobs describe "$${JOB_RESOURCE}" --region=${_REGION} --format='value(state)')
+          echo "Vertex job state: $${STATE}"
+          if [ "$${STATE}" = "JOB_STATE_SUCCEEDED" ]; then
+            break
+          fi
+          if [ "$${STATE}" = "JOB_STATE_FAILED" ] || [ "$${STATE}" = "JOB_STATE_CANCELLED" ]; then
+            echo "Vertex job did not succeed."
+            exit 1
+          fi
+          sleep 60
+        done
     waitFor: ["push-train-image"]
 
   # Step 4: Store the experiment metadata
@@ -80,4 +97,4 @@ options:
   logging: CLOUD_LOGGING_ONLY
   machineType: "E2_MEDIUM"
 
-timeout: "1800s" # 30 min to submit job (training runs async on Vertex AI)
+timeout: "21600s" # 6 hours (includes waiting for Vertex training)
