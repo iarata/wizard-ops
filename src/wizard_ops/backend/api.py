@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from google.cloud import storage
 from PIL import Image
 
-from src.wizard_ops import evaluate
+from wizard_ops.evaluate import load_model_for_inference, predict_nutrition
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,8 +35,8 @@ async def lifespan(app: FastAPI):
         print("Model downloaded successfully")
 
     # Checkpoint PyTorch-Lightning
-    model_dev_t = evaluate.load_model_for_inference(
-        MODEL_PATH, device=torch.device("cpu")
+    model_dev_t = load_model_for_inference(
+        MODEL_PATH, device=torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     )
     yield
 
@@ -74,7 +74,7 @@ async def analyze_food(file: UploadFile = File(...)):
     }
 
     try:
-        prediction = evaluate.predict_nutrition(model_dev_t, images=[image])
+        prediction = predict_nutrition(model_dev_t, images=[image])
 
         result = {
             "calories": prediction["normalized"]["total_calories"],
