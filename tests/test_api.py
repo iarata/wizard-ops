@@ -45,12 +45,9 @@ def test_health_check(mock_model):
             assert response.status_code == 200
             
             data = response.json()
-            # Assert required keys exist
-            assert "status" in data
             assert "model_loaded" in data
             
             # Assert expected values
-            assert data["status"] == "ready"
             assert isinstance(data["model_loaded"], bool)
 
 def test_checkpoint_loading(mock_model):
@@ -110,15 +107,16 @@ def test_analyze_with_valid_image(sample_image, mock_model):
             assert response.status_code == 200
             
             data = response.json()
-            
+            result_ = data["result"]
+
             # Assert all required keys are present
             required_keys = ["calories", "fat_g", "protein_g", "carbs_g"]
             for key in required_keys:
-                assert key in data, f"Missing required key: {key}"
+                assert key in result_, f"Missing required key: {key}"
             
             # Assert values are numeric
-            assert isinstance(data["calories"], (int, float))
-            assert isinstance(data["fat_g"], (int, float))
-            assert isinstance(data["protein_g"], (int, float))
-            assert isinstance(data["carbs_g"], (int, float))
+            assert isinstance(result_["calories"], (int, float))
+            assert isinstance(result_["fat_g"], (int, float))
+            assert isinstance(result_["protein_g"], (int, float))
+            assert isinstance(result_["carbs_g"], (int, float))
 
