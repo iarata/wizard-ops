@@ -669,7 +669,7 @@ For load testing, we used locust. We defined a custom load shape using the LoadT
     <img src="figures/load_test_reponse times.png" alt="50, 95 and 99‰ quantiles of response time." width="30%"/>
 </p>
 
-We see that the response times generally are high (with 95% quantile easier to visualize in seconds than milliseconds), with a max response time of over 2 minutes. Furthermore, 2/3 of the requests fail: 735 of 1021. There is a good reason for this: The scaling of the cloud run service was set to 1 instance to prevent uncontrollable billing.
+We see that the response times generally are high (with 95% quantile easier to visualize in seconds than milliseconds), with a max response time of over 2 minutes. Furthermore, 3/4 of the requests fail: 735 of 1021. There is a good reason for this: The scaling of the cloud run service was set to 1 instance to prevent uncontrollable billing.
 
 
 ### Question 26
@@ -703,6 +703,8 @@ We see that the response times generally are high (with 95% quantile easier to v
 > _costing the most was ... due to ... . Working in the cloud was ..._
 >
 > Answer:
+
+johco (s223190) used 0 credits. (?)
 
 --- question 27 fill here ---
 
@@ -776,6 +778,8 @@ One of the biggest challenges was connecting our Docker images with GCP (Cloud R
 TODO: @all
 
 Student s253471 contributed to project infrastructure, building the inference/evaluation pipeline, strengthening tests, improving model-training workflows, updating documentation and packaging, and adding Docker upgrades for the training environment.
+Student johco (s223190) contributed to the training and evaluation codebase, implemented API testing, and conducted load testing to assess performance.
+
 
 ---
 
