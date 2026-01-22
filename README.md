@@ -159,7 +159,7 @@ Team 33
 >
 > Answer:
 
-s253471, s253033, s253081, s223190, alihaj
+s253471, s253033, s253081, s223190, s242522
 
 ### Question 3
 > **A requirement to the project is that you include a third-party package not covered in the course. What framework**
@@ -198,7 +198,17 @@ and normalizing.
 >
 > Answer:
 
---- question 4 fill here ---
+We used `uv` for managing our dependencies. We structured the project as a
+workspace in the root `pyproject.toml`, with the two sub-projects `frontend` and
+`backend` (under the `src/` folder) each having their own `pyproject.toml`).
+
+To get a complete copy of the development environment, it is sufficient to run
+
+```bash
+uv sync --all-packages
+```
+
+in the root of the repository.
 
 ### Question 5
 
@@ -214,7 +224,17 @@ and normalizing.
 >
 > Answer:
 
---- question 5 fill here ---
+From the cookiecutter template we have filled out the `src`, `tests`, `configs`
+and `dockerfiles` folders. We kept unmodified the folders `scripts` and
+`reports` (except for filling out the report itself). We have removed the `data`
+folder as its purpose is fulfilled by the DVC setup.
+
+We have added a `.devcontainer` folder that contains the configuration files for
+setting up a development container in VSCode and other supported IDEs. We have
+also added a `.dvc` folder for data version control.
+
+We did not add multiple experiments to the Hydra `configs` folder, we have only
+our main configuration file.
 
 ### Question 6
 
@@ -229,7 +249,18 @@ and normalizing.
 >
 > Answer:
 
---- question 6 fill here ---
+We agreed verbally on using typing as much as possible in our codebase, where it
+does not impede readability or ease of development. We used `ruff` for linting
+and defined its rules in the `pyproject.toml` file. We have also added a linting
+check step to our CI pipeline to ensure that all code merged to the main branch
+follows the defined rules.
+
+These concepts are important in larger projects because they help maintain code
+quality and readability, and facilitate collaboration among team members. Typing
+for example serves as additional documentation for communicating the inputs,
+purpose and outputs of functions, classes and class members, facilitating
+therefore collaboration across team members assigned to different tasks. It also
+helps catch potential bugs early in the development process.
 
 ## Version control
 
@@ -248,7 +279,11 @@ and normalizing.
 >
 > Answer:
 
---- question 7 fill here ---
+In total we have implemented 27 tests. We kept the original structure of the
+`tests` folder, and we are equally testing data processing, model evaluation,
+the model class functionality itself, and the training processes. Naturally,
+we mocked the expensive operations to ensure fast runs of testing which need not
+be tested anyway.
 
 ### Question 8
 
@@ -263,7 +298,13 @@ and normalizing.
 >
 > Answer:
 
---- question 8 fill here ---
+The total code coverage at time of writing is 42%. At time of writing, we did
+not exclude any files from the coverage criterion.
+
+Even with code coverage of 100%, we wouldn't expect it to be completely error
+free as code coverage merely measures the lines of code that were executed over
+the total number. However, combined scenarios of different things executing one
+after the other could still cause bugs, particularly in stateful applications.
 
 ### Question 9
 
@@ -278,7 +319,17 @@ and normalizing.
 >
 > Answer:
 
---- question 9 fill here ---
+Yes, we have made use of both branches and PRs in our project. Every week when
+we met, we discuss the current status of tasks and overall progress, then get on
+to assigning what's left to do to each member. Each member then creates a branch
+that refers to one or more interrelated tasks that they were assigned, and
+creates a pull request when they are done.
+
+The pull request is then reviewed by at least one other member, who can chime in
+with comments or suggestions on things the original author might have missed.
+
+While doing so, the reviewer can also understand what was done, which can
+potentially help them in their own tasks.
 
 ### Question 10
 
@@ -293,7 +344,7 @@ and normalizing.
 >
 > Answer:
 
---- question 10 fill here ---
+TODO: @Ari
 
 ### Question 11
 
@@ -310,7 +361,7 @@ and normalizing.
 >
 > Answer:
 
---- question 11 fill here ---
+TODO: @Janis
 
 ## Running code and tracking experiments
 
@@ -329,7 +380,7 @@ and normalizing.
 >
 > Answer:
 
---- question 12 fill here ---
+TODO: @Ari
 
 ### Question 13
 
@@ -344,7 +395,7 @@ and normalizing.
 >
 > Answer:
 
---- question 13 fill here ---
+TODO: @Ari
 
 ### Question 14
 
@@ -361,7 +412,7 @@ and normalizing.
 >
 > Answer:
 
---- question 14 fill here ---
+TODO: @Ari
 
 ### Question 15
 
@@ -408,7 +459,19 @@ and normalizing.
 >
 > Answer:
 
---- question 17 fill here ---
+We used the following GCP services:
+
+- **Cloud Run**: to deploy both our backend and frontend as Docker containers.
+- **Buckets**: to store our dataset and trained model checkpoints.
+- **Artifact Registry**: to store our Docker images.
+- **Cloud Build**: to automate the building and pushing of our Docker images to
+  the Artifact Registry.
+- **Monitoring**: we can use it to review some default metrics about the
+  deployed services, but we also set up an example alert which is triggered when
+  any of the container encounters 3 errors within 5 minutes, we set up email
+  notifications as channel for this alert.
+
+Review: @Janis?
 
 ### Question 18
 
@@ -423,7 +486,13 @@ and normalizing.
 >
 > Answer:
 
---- question 18 fill here ---
+We did not use the **Compute Engine** in our project as we did not need a full
+VM for our use case. Instead, we opted for **Cloud Run** to deploy our
+application, which allows us to simply select a Docker image to deploy (or other
+formats of services supported), and GCP manages the underlying compute
+resources for us.
+
+Review: @Janis?
 
 ### Question 19
 
@@ -432,7 +501,24 @@ and normalizing.
 >
 > Answer:
 
---- question 19 fill here ---
+<p align="center">
+    <img src="figures/wizards_buckets.png" alt="GCP Buckets" width="40%"/>
+    <img src="figures/wizards_buckets_kfc.png" alt="GCP Bucket dtu-kfc-bucket" width="40%"/>
+</p>
+
+We have four buckets in total, three of them were generated by other GCP
+services automatically:
+
+- `1043637954808-global-cloudbuild-logs`: created by Cloud Build to store build
+  logs.
+- `cloud-ai-platform-e00b3ead-b0cc-4abc-b02f-d470fd845838`: created by Vertex AI
+  to store model artifacts.
+- `dtu-kfc-bucket`: our main bucket to store the dataset and trained model
+  checkpoints.
+- `dtumlops-484413_cloudbuild`: created by Cloud Build to store build artifacts.
+
+In the images, we show the list of buckets, and the contents of the
+`dtu-kfc-bucket` bucket.
 
 ### Question 20
 
@@ -441,7 +527,16 @@ and normalizing.
 >
 > Answer:
 
---- question 20 fill here ---
+<p align="center">
+    <img src="figures/wizards_artifact_registry.png" alt="GCP Artifact Registry gcr.io" width="40%"/>
+    <img src="figures/wizards_artifact_registry_2.png" alt="GCP Artifact Registry container-registry" width="40%"/>
+</p>
+
+We have two registries, the `gcr.io` one we used to store our Docker images for
+frontend and backend (Cloud Run deployments), and the `container-registry` one
+was used for a testing image and is being used for the training image.
+
+TODO: @Ari – `container-registry` maybe can be merged to `gcr.io`?
 
 ### Question 21
 
@@ -450,7 +545,13 @@ and normalizing.
 >
 > Answer:
 
---- question 21 fill here ---
+<p align="center">
+    <img src="figures/wizards_build_history.png" alt="GCP Cloud Build History" width="60%"/>
+</p>
+
+We have a lot of builds without a Ref. Those are manual builds we triggered
+while experimenting and developing the whole setup. The latest two builds can
+be seen with a Ref as we finalized the setup.
 
 ### Question 22
 
@@ -465,7 +566,7 @@ and normalizing.
 >
 > Answer:
 
---- question 22 fill here ---
+TODO: @Ari
 
 ## Deployment
 
@@ -482,7 +583,17 @@ and normalizing.
 >
 > Answer:
 
---- question 23 fill here ---
+We did manage to write an API for our model. We used FastAPI and developed a
+very basic endpoint that accepts an image file and returns the predicted
+nutritional values.
+
+To do so, we created a `backend` sub-project in our repository, with its own
+`pyproject.toml` file, and a `api.dockerfile` in the `dockerfiles` folder. When
+the FastAPI server starts, it loads the model from a specified local path in the
+environment variables, or fallbacks to a GCS known path if not given.
+
+The local path is preferred because it uses DVC to download the model checkpoint
+at the latest versioned state.
 
 ### Question 24
 
@@ -498,7 +609,19 @@ and normalizing.
 >
 > Answer:
 
---- question 24 fill here ---
+Yes, we managed to deploy our API in the cloud using Cloud Run. We built a
+Docker image for the FastAPI backend, pushed it to the Artifact Registry, and
+then deployed it to Cloud Run.
+
+To invoke the service, a user can either use the front-end UI we developed, or
+make the same POST request manually using `curl`:
+
+```bash
+curl -X POST -F "file=@path_to_image.jpg" <cloud_run_service_url>/analyze
+```
+
+The returned payload is a JSON with the fields `calories`, `fat_g`, `protein_g`,
+`carbs_g`, representing the predicted nutritional values, denormalized.
 
 ### Question 25
 
@@ -513,7 +636,7 @@ and normalizing.
 >
 > Answer:
 
---- question 25 fill here ---
+TODO: @Johanne
 
 ### Question 26
 
@@ -563,7 +686,9 @@ and normalizing.
 >
 > Answer:
 
---- question 28 fill here ---
+We did implement a simple front-end using the **Streamlit** library presented in
+the course material. It is a very simple front-end that provides an unprotected
+form to upload an image and returns the predicted nutritional values beside it.
 
 ### Question 29
 
@@ -580,7 +705,7 @@ and normalizing.
 >
 > Answer:
 
---- question 29 fill here ---
+TODO: @Ari
 
 ### Question 30
 
@@ -594,7 +719,7 @@ and normalizing.
 >
 > Answer:
 
---- question 30 fill here ---
+TODO: @all
 
 ### Question 31
 
@@ -611,3 +736,5 @@ and normalizing.
 > *All members contributed to code by...*
 > *We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code.*
 > Answer:
+
+TODO: @all
