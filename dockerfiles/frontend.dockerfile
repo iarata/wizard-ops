@@ -18,4 +18,4 @@ ENV WIZARD_BACKEND=""
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8501}/_stcore/health || exit 1
 
-ENTRYPOINT ["sh", "-c", "exec streamlit run frontend.py --server.address=0.0.0.0 --server.fileWatcherType=none --server.port=${PORT:-8501}"]
+ENTRYPOINT ["sh", "-c", "exec streamlit run frontend.py --client.toolbarMode minimal --server.address=0.0.0.0 --server.fileWatcherType=none --server.port=${PORT:-8501}"]
