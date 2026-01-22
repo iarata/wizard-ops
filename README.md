@@ -159,7 +159,7 @@ Team 33
 >
 > Answer:
 
-s253471, s253033, s253081, s223190, s242522
+s253471, s253033, s253081, johco (s223190), alihaj (s242522)
 
 ### Question 3
 > **A requirement to the project is that you include a third-party package not covered in the course. What framework**
