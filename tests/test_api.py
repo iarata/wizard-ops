@@ -3,6 +3,7 @@ import io
 import sys
 from unittest.mock import MagicMock, patch
 
+from http import HTTPStatus
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
@@ -10,14 +11,15 @@ from PIL import Image
 
 
 @pytest.fixture
-def sample_image():
+def sample_files():
     """Create a sample image for testing."""
     # Generate test image
     img = Image.fromarray(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))
     img_bytes = io.BytesIO()
     img.save(img_bytes, format='JPEG')
     img_bytes.seek(0)  # Reset to start
-    return img_bytes
+    files = {'file': ('food.jpg', img_bytes, 'image/jpeg')}
+    return files
 
 @pytest.fixture
 def mock_model():
@@ -76,7 +78,7 @@ def test_checkpoint_loading(mock_model):
 
          
 
-def test_analyze_with_valid_image(sample_image, mock_model):
+def test_analyze_with_valid_image(sample_files, mock_model):
     """Test /analyze endpoint with a valid image."""
 
     # Patch google storage client, model loading, model path and predict function
@@ -104,8 +106,7 @@ def test_analyze_with_valid_image(sample_image, mock_model):
              from wizard_ops.backend.api import app
 
          with TestClient(app) as client:
-            files = {'file': ('food.jpg', sample_image, 'image/jpeg')}
-            response = client.post("/analyze", files=files)
+            response = client.post("/analyze", files=sample_files)
                     
             assert response.status_code == 200
             
@@ -121,4 +122,48 @@ def test_analyze_with_valid_image(sample_image, mock_model):
             assert isinstance(data["fat_g"], (int, float))
             assert isinstance(data["protein_g"], (int, float))
             assert isinstance(data["carbs_g"], (int, float))
+
+
+def test_analyze_model_not_loaded(sample_files, mock_model):
+    with patch('pathlib.Path.exists', return_value=True), \
+         patch('wizard_ops.evaluate.load_model_for_inference', return_value=None):
+                 
+         from wizard_ops.backend.api import app
+
+
+         with TestClient(app) as client:
+            response = client.post("/analyze", files=sample_files)
+
+            assert response.status_code == 200
+            data = response.json()
+
+            assert data == {
+                "message": "Model not loaded yet. Please try again later.",
+                "status": HTTPStatus.INTERNAL_SERVER_ERROR,
+            }
+
+            
+def test_inference_error_exception(sample_files, mock_model):
+    with patch('pathlib.Path.exists', return_value=True),\
+         patch('wizard_ops.evaluate.load_model_for_inference', return_value=mock_model), \
+         patch('wizard_ops.evaluate.predict_nutrition') as mock_predict:
+            
+            mock_predict.side_effect = RuntimeError("Inference exception")
+
+            from wizard_ops.backend.api import app
+
+            with TestClient(app) as client:
+                response = client.post("/analyze", files=sample_files)
+
+                assert response.status_code == 200
+                data = response.json()
+
+                assert data == {
+                    "calories": 0.0,
+                    "fat_g": 0.0,
+                    "protein_g": 0.0,
+                    "carbs_g": 0.0,
+                }
+
+
 
