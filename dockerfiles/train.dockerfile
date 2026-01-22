@@ -21,6 +21,10 @@ RUN uv lock
 COPY src/ src/
 COPY configs/ configs/
 
+# Copy DVC tracked metafiles (needed for dvc pull/push at runtime)
+COPY data.nosync.dvc data.nosync.dvc
+COPY checkpoints.dvc checkpoints.dvc
+
 # Sync Python dependencies
 RUN uv sync --no-cache
 
