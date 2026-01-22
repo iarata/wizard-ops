@@ -9,7 +9,16 @@ CONFIG_FILE="/app/configs/config.yaml"
 # Function to read yaml value (simple grep-based, works for flat values)
 get_config() {
     local key=$1
-    grep -E "^\s*${key}:" "$CONFIG_FILE" | head -1 | sed 's/.*:\s*"\?\([^"]*\)"\?.*/\1/' | tr -d ' '
+    local line
+    line=$(grep -E "^[[:space:]]*${key}:" "$CONFIG_FILE" | head -1 || true)
+    if [ -z "$line" ]; then
+        return 0
+    fi
+    # Extract value after ':'; remove surrounding quotes; ignore inline comments.
+    # NOTE: Use POSIX character classes (sed does not support '\s').
+    echo "$line" \
+        | sed -E 's/^[^:]+:[[:space:]]*"?([^"#]+)"?.*$/\1/' \
+        | xargs
 }
 
 # Use environment variables if set, otherwise fall back to config.yaml

@@ -11,7 +11,7 @@ RUN apt update && \
 WORKDIR /app
 
 # Install DVC with GCS support
-RUN pip install dvc "dvc[gs]"
+# RUN uv add dvc "dvc[gs]"
 
 # Copy project files first (for dependency resolution)
 COPY pyproject.toml pyproject.toml
