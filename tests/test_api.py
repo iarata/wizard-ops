@@ -1,12 +1,13 @@
+import importlib
 import io
+import sys
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
-from unittest.mock import patch, MagicMock
-import importlib
-import sys
+
 
 @pytest.fixture
 def sample_image():
@@ -120,34 +121,4 @@ def test_analyze_with_valid_image(sample_image, mock_model):
             assert isinstance(data["fat_g"], (int, float))
             assert isinstance(data["protein_g"], (int, float))
             assert isinstance(data["carbs_g"], (int, float))
-
-
-
-# # def test_analyze_with_png_image():
-# #     """Test /analyze with PNG format."""
-# #     with TestClient(app) as client:
-# #         img = Image.fromarray(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))
-# #         img_bytes = io.BytesIO()
-# #         img.save(img_bytes, format='PNG')
-# #         img_bytes.seek(0)
-    
-# #         files = {'file': ('food.png', img_bytes, 'image/png')}
-# #         response = client.post("/analyze", files=files)
-        
-# #         assert response.status_code == 200
-# #         data = response.json()
-# #         assert "calories" in data
-
-
-
-
-# # from wizard_ops.backend.api import app
-
-# # def test_analyze_without_file():
-# #     """Test /analyze endpoint without uploading a file."""
-# #     with TestClient(app) as client:
-# #         response = client.post("/analyze")
-    
-# #         # Should return 422 Unprocessable Entity (missing required field)
-# #         assert response.status_code == 422
 
