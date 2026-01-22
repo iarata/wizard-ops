@@ -176,10 +176,7 @@ s253471, s253033, s253081, johco (s223190), alihaj (s242522)
 > Answer:
 
 The library we've used in our project is Albumations
-(https://pypi.org/project/albumentations/). It is a library commonly used in
-Computer Vision applications to derive new samples for training higher quality
-models. We used it to apply transformations to our input images such as resizing
-and normalizing.
+(https://pypi.org/project/albumentations/). It is a library commonly used in Computer Vision applications to derive new samples for training higher quality models. We used it to apply transformations to our input images such as resizing and normalizing. We utilized Albuminations over the course's used torchvision or cv2 libraries, as this library's pipelines provide a unified interface that simultaneously transforms images and their associated metadata (in our case, dish images and the ground truth metadata about their nutritional value).
 
 ## Coding environment
 
@@ -211,6 +208,8 @@ uv sync --all-packages
 
 in the root of the repository.
 
+We chose to omit the `uv.lock` file from being permanently stored in the root directory, as it forces the environment to resolve dependencies dynamically, which ensures the project stays synchronized with the latest updates and prevents dependency issues.
+
 ### Question 5
 
 > **We expect that you initialized your project using the cookiecutter template. Explain the overall structure of your**
@@ -227,8 +226,7 @@ in the root of the repository.
 
 From the cookiecutter template we have filled out the `src`, `tests`, `configs`
 and `dockerfiles` folders. We kept unmodified the folders `scripts` and
-`reports` (except for filling out the report itself). We have removed the `data`
-folder as its purpose is fulfilled by the DVC setup.
+`reports` (except for filling out the report itself). We have removed the `data` and `notebooks` folders as their purpose is fulfilled by the DVC setup and python scripts for executing training/evaluation pipeline, respectively.
 
 We have added a `.devcontainer` folder that contains the configuration files for
 setting up a development container in VSCode and other supported IDEs. We have
@@ -399,7 +397,11 @@ The testing workflow file is available here https://github.com/iarata/wizard-ops
 >
 > Answer:
 
-TODO: @Ari
+TODO: @Ari, please review.
+
+We used Hydra config files `(configs/config.yaml)` to define all our data, model, and training hyperparameters. To run an experiment, use the package’s CLI and pass needed Hydra commands. For example, by executing on terminal: `uv run wizard_ops train model.backbone=resnet50 train.max_epochs=20 train.fast_dev_run=false`
+
+would kick off a full training run and produce checkpoints and logs on W&B's. 
 
 ### Question 13
 
@@ -753,6 +755,8 @@ TODO: @Ari
 
 TODO: @all
 
+One of the biggest challenges was connecting our Docker images with GCP (Cloud Run / Artifact Registry / Cloud Build). We faced local packaging (presence/absence of uv.lock), authentication and region/repository mismatch issues. We resolved these issues by moving builds for each Docker image into separate cloudbuild.yaml files, and moved secrets to GCP's secret manager. 
+
 ### Question 31
 
 > **State the individual contributions of each team member. This is required information from DTU, because we need to**
@@ -770,6 +774,8 @@ TODO: @all
 > Answer:
 
 TODO: @all
+
+Student s253471 contributed to project infrastructure, building the inference/evaluation pipeline, strengthening tests, improving model-training workflows, updating documentation and packaging, and adding Docker upgrades for the training environment.
 
 ---
 
