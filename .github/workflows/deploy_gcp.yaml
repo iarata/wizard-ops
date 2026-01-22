@@ -1,0 +1,110 @@
+name: Deploy to Cloud Run
+
+on:
+#  push:
+#    branches:
+#      - main
+#      - fe-be-gcloud-deployment
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: dtumlops-484413
+  REGION: europe-west1
+  BACKEND_SERVICE: wizard-ops-api
+  FRONTEND_SERVICE: streamlit-app
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Build Backend Image
+        run: |
+          docker build --platform linux/amd64 \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest \
+            -f dockerfiles/api.dockerfile \
+            .
+
+      - name: Push Backend Image
+        run: |
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }}
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest
+
+      - name: Deploy Backend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --scaling=1 \
+            --memory 2Gi \
+            --allow-unauthenticated
+
+      - name: Get Backend URL
+        id: backend-url
+        run: |
+          URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Build Frontend Image
+        run: |
+          docker build --platform linux/amd64 \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }} \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:latest \
+            -f dockerfiles/frontend.dockerfile \
+            .
+
+      - name: Push Frontend Image
+        run: |
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }}
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:latest
+
+      - name: Deploy Frontend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --set-env-vars WIZARD_BACKEND=${{ needs.deploy-backend.outputs.url }}
