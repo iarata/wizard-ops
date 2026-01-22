@@ -655,7 +655,20 @@ The returned payload is a JSON with the fields `calories`, `fat_g`, `protein_g`,
 >
 > Answer:
 
-TODO: @Johanne
+We used pytest, the fastapi Testclient for the unittesting, following the exercises. Additionally, we used patch and MagicMock from the unittest.mock module to avoid connecting to the google cloud storage during the tests.
+
+For load testing, we used locust. We defined a custom load shape using the LoadTestShape class in order tp simulate a gradually increasing load, followed by a sudden peak. This also allowed us to implement a warm-up phase which we discard when computing statistics from the load test.
+
+<p align="center">
+    <img src="figures/load_test_user_count.png" alt="The custom shaped load test." width="30%"/>
+</p>
+
+<p align="center">
+    <img src="figures/load_test_reponse times.png" alt="50, 95 and 99‰ quantiles of response time." width="30%"/>
+</p>
+
+We see that the response times generally are high (with 95% quantile easier to visualize in seconds than milliseconds), with a max response time of over 2 minutes. Furthermore, 2/3 of the requests fail: 735 of 1021. There is a good reason for this: The scaling of the cloud run service was set to 1 instance to prevent uncontrollable billing.
+
 
 ### Question 26
 

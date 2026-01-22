@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences
+POST,/analyze,HTTPError('503 Server Error: Service Unavailable for url: /analyze'),8
+GET,/,HTTPError('429 Client Error: Too Many Requests for url: /'),454
+POST,/analyze,HTTPError('429 Client Error: Too Many Requests for url: /analyze'),4269
