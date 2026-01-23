@@ -21,6 +21,13 @@ substitutions:
   # Skip training if only deploying serving components
   _SKIP_TRAINING: "false"
 
+  # Vertex AI training configuration (GPU)
+  _VERTEX_MACHINE_TYPE: "n1-standard-8"
+  _VERTEX_ACCELERATOR_TYPE: "NVIDIA_TESLA_T4"
+  _VERTEX_ACCELERATOR_COUNT: "1"
+  # Service account used by the Vertex training job at runtime (must have GCS access)
+  _VERTEX_SERVICE_ACCOUNT: "dtu-kfc-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+
 steps:
   # Step 0: Set up common variables (TAG and REGISTRY)
   - name: "gcr.io/cloud-builders/docker"
@@ -43,10 +50,23 @@ steps:
         fi
 
         REGISTRY="europe-west4-docker.pkg.dev/$PROJECT_ID/container-registry"
+        # Compute checkpoint path dynamically unless explicitly overridden
+        EXP_NAME="${_EXPERIMENT_NAME}"
+        BACKBONE_NAME="${_BACKBONE}"
+        if [ -z "$${EXP_NAME}" ]; then EXP_NAME="default_experiment"; fi
+        if [ -z "$${BACKBONE_NAME}" ]; then BACKBONE_NAME="resnet18"; fi
+
+        CHECKPOINT_BLOB="${_CHECKPOINT_BLOB}"
+        if [ -z "$${CHECKPOINT_BLOB}" ]; then
+          CHECKPOINT_BLOB="checkpoints/nutrition_$${BACKBONE_NAME}_$${EXP_NAME}/final_model.ckpt"
+        fi
+
         echo "TAG=$${TAG}" > /workspace/build-vars.env
         echo "REGISTRY=$${REGISTRY}" >> /workspace/build-vars.env
+        echo "CHECKPOINT_BLOB=$${CHECKPOINT_BLOB}" >> /workspace/build-vars.env
         echo "Build Tag: $${TAG}"
         echo "Registry: $${REGISTRY}"
+        echo "Checkpoint Blob: $${CHECKPOINT_BLOB}"
 
   # ==================== TRAINING PHASE ====================
 
@@ -88,7 +108,7 @@ steps:
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "run-training"
     entrypoint: "bash"
-    secretEnv: ["GCS_CREDENTIALS", "WANDB_API_KEY"]
+    secretEnv: ["WANDB_API_KEY"]
     args:
       - "-c"
       - |
@@ -97,18 +117,39 @@ steps:
           exit 0
         fi
         source /workspace/build-vars.env
-        echo "$$GCS_CREDENTIALS" > /workspace/credentials.json
 
-        docker run --rm \
-          -e EXPERIMENT_NAME=${_EXPERIMENT_NAME} \
-          -e BACKBONE=${_BACKBONE} \
-          -e MAX_EPOCHS=${_MAX_EPOCHS} \
-          -e BATCH_SIZE=${_BATCH_SIZE} \
-          -e FAST_DEV_RUN=${_FAST_DEV_RUN} \
-          -e WANDB_API_KEY="$$WANDB_API_KEY" \
-          -e GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json \
-          -v /workspace/credentials.json:/app/credentials.json:ro \
-          $${REGISTRY}/wizard-ops-train:$${TAG}
+        JOB_NAME="wizard-ops-train-$${TAG}-$(date +%Y%m%d%H%M%S)"
+        echo "Submitting Vertex AI Custom Job: $${JOB_NAME}"
+
+        JOB_RESOURCE=$$(gcloud ai custom-jobs create \
+          --region=${_REGION} \
+          --display-name=$${JOB_NAME} \
+          --worker-pool-spec=machine-type=${_VERTEX_MACHINE_TYPE},accelerator-type=${_VERTEX_ACCELERATOR_TYPE},accelerator-count=${_VERTEX_ACCELERATOR_COUNT},replica-count=1,container-image-uri=$${REGISTRY}/wizard-ops-train:$${TAG} \
+          --env-vars="EXPERIMENT_NAME=${_EXPERIMENT_NAME},BACKBONE=${_BACKBONE},MAX_EPOCHS=${_MAX_EPOCHS},BATCH_SIZE=${_BATCH_SIZE},FAST_DEV_RUN=${_FAST_DEV_RUN},WANDB_API_KEY=$$WANDB_API_KEY" \
+          --service-account="${_VERTEX_SERVICE_ACCOUNT}" \
+          --format='value(name)')
+
+        if [ -z "$${JOB_RESOURCE}" ]; then
+          echo "Failed to get Vertex job resource name."
+          exit 1
+        fi
+
+        echo "Vertex job resource: $${JOB_RESOURCE}"
+        echo "Monitor at: https://console.cloud.google.com/vertex-ai/training/custom-jobs?project=${PROJECT_ID}"
+
+        echo "Waiting for Vertex AI job to finish..."
+        while true; do
+          STATE=$$(gcloud ai custom-jobs describe "$${JOB_RESOURCE}" --region=${_REGION} --format='value(state)')
+          echo "Vertex job state: $${STATE}"
+          if [ "$${STATE}" = "JOB_STATE_SUCCEEDED" ]; then
+            break
+          fi
+          if [ "$${STATE}" = "JOB_STATE_FAILED" ] || [ "$${STATE}" = "JOB_STATE_CANCELLED" ]; then
+            echo "Vertex job did not succeed."
+            exit 1
+          fi
+          sleep 60
+        done
     waitFor: ["push-train-image"]
 
   # ==================== BACKEND DEPLOYMENT PHASE ====================
@@ -123,7 +164,7 @@ steps:
         source /workspace/build-vars.env
         docker build -f dockerfiles/api.dockerfile \
           --build-arg BUCKET_NAME=${_BUCKET} \
-          --build-arg CHECKPOINT_BLOB=${_CHECKPOINT_BLOB} \
+          --build-arg CHECKPOINT_BLOB=$${CHECKPOINT_BLOB} \
           -t $${REGISTRY}/wizard-ops-api:$${TAG} \
           -t $${REGISTRY}/wizard-ops-api:latest \
           .
@@ -155,7 +196,7 @@ steps:
           --platform managed \
           --memory ${_API_MEMORY} \
           --allow-unauthenticated \
-          --set-env-vars "BUCKET_NAME=${_BUCKET},CHECKPOINT_BLOB=${_CHECKPOINT_BLOB}"
+          --set-env-vars "BUCKET_NAME=${_BUCKET},CHECKPOINT_BLOB=$${CHECKPOINT_BLOB}"
     waitFor: ["push-api-image"]
 
   # Step 7: Get backend URL
@@ -243,8 +284,6 @@ steps:
 
 availableSecrets:
   secretManager:
-    - versionName: "projects/$PROJECT_ID/secrets/gcs-credentials/versions/latest"
-      env: "GCS_CREDENTIALS"
     - versionName: "projects/$PROJECT_ID/secrets/wandb-api-key/versions/latest"
       env: "WANDB_API_KEY"
 

@@ -41,13 +41,13 @@ outputs/
 wandb/
 reports/
 logs/
-
+    
 # Documentation
 docs/
 
 # DVC files (we copy .dvc/ directory, but not tracked data)
-*.dvc
-!.dvc/
+# *.dvc
+# !.dvc/
 
 # Credentials (never include in image)
 *.json

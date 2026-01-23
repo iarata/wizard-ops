@@ -110,7 +110,7 @@ librt==0.7.8
 lightning==2.6.0
 lightning-utilities==0.15.2
 loguru==0.7.3
-markdown==3.10.1
+markdown==3.10
 markdown-it-py==4.0.0
 markupsafe==3.0.3
 matplotlib==3.10.8
@@ -136,12 +136,12 @@ numpy==2.4.1
 oauthlib==3.3.1
 omegaconf==2.3.0
 onnx==1.20.1
-onnx-ir==0.1.15
+onnx-ir==0.1.14
 onnxruntime==1.23.2
 onnxscript==0.5.7
 opencv-python-headless==4.13.0.90
 orjson==3.11.5
-packaging==26.0
+packaging==25.0
 paginate==0.5.7
 pandas==2.3.3
 pathspec==0.12.1
@@ -233,9 +233,10 @@ virtualenv==20.36.1
 voluptuous==0.16.0
 wandb==0.24.0
 watchdog==6.0.0
-wcwidth==0.3.0
+wcwidth==0.2.14
 webencodings==0.5.1
 werkzeug==3.1.5
+-e file:///Users/jr/Developer/_dtu/wizard-ops
 xxhash==3.6.0
 yarl==1.22.0
 zc-lockfile==4.0

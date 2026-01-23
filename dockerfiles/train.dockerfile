@@ -2,13 +2,16 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # Install system dependencies
 RUN apt update && \
-    apt install --no-install-recommends -y build-essential gcc git && \
+    apt install --no-install-recommends -y \
+    build-essential gcc git \
+    libglib2.0-0 libgl1 \
+    libxext6 libxrender1 libxcb1 && \
     apt clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Install DVC with GCS support
-RUN pip install dvc "dvc[gs]"
+# RUN uv add dvc "dvc[gs]"
 
 # Copy project files first (for dependency resolution)
 COPY pyproject.toml pyproject.toml
@@ -20,6 +23,10 @@ RUN uv lock
 # Copy source code and configs
 COPY src/ src/
 COPY configs/ configs/
+
+# Copy DVC tracked metafiles (needed for dvc pull/push at runtime)
+COPY data.nosync.dvc data.nosync.dvc
+COPY checkpoints.dvc checkpoints.dvc
 
 # Sync Python dependencies
 RUN uv sync --no-cache
