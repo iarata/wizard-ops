@@ -343,7 +343,7 @@ potentially help them in their own tasks.
 >
 > Answer:
 
-TODO: @Ari
+Yes we used DVC with Google buckets. As we started using this we came to a conclusion that DVC is very good to do developments locally or share the projects between other members, but it is definitely not a solution for automated production pipelines. This comes from our experiments with setting up cloud builds as trying to automate the training phase however DVC has many compatibility issues when it comes to containerising.
 
 ### Question 11
 
@@ -365,17 +365,17 @@ We have organized our continuous integration into 2 files -- 1) for linting and 
 In the linting workflow we checkout the code, install the dependencies and run a check with `ruff`.
 In the testing workflow we checkout the code, install the dependencies and run `pytest` with coverage.
 
-We make use of cache, storing contents of ~/.cache/uv, ~/.local/share/uv/python, .venv from the runner to save 
+We make use of cache, storing contents of ~/.cache/uv, ~/.local/share/uv/python, .venv from the runner to save
 having to download the same dependencies on every run, when they don't change across most runs.
 
 Initially our setup was building on GitHub Actions and deploying to Google Cloud, later building and deploying, however,
-the latest revision work definition is also on Google Cloud. This makes it more difficult to reason about work definitions, 
-having workflow configurations on GitHub AND Google. Using GitHub CI/CD would make it rather simple to cache Docker layers as well, 
-reducing time spent building. 
+the latest revision work definition is also on Google Cloud. This makes it more difficult to reason about work definitions,
+having workflow configurations on GitHub AND Google. Using GitHub CI/CD would make it rather simple to cache Docker layers as well,
+reducing time spent building.
 
 We do not test multiple operating systems and Python versions in the interest of performance and faster feedback cycles,
-we only test one OS = Linux, where our code runs, and the Python version we use = 3.12. That said, 
-running tests for different OSs and Python versions in parallel should not only give us confidence 
+we only test one OS = Linux, where our code runs, and the Python version we use = 3.12. That said,
+running tests for different OSs and Python versions in parallel should not only give us confidence
 on compatibility with different versions, but also accomplish our goal of fast feedback cycles.
 
 The testing workflow file is available here https://github.com/iarata/wizard-ops/blob/main/.github/workflows/tests.yaml
@@ -397,9 +397,7 @@ The testing workflow file is available here https://github.com/iarata/wizard-ops
 >
 > Answer:
 
-We used Hydra config files `(configs/config.yaml)` to define all our data, model, and training hyperparameters. To run an experiment, use the package’s CLI and pass needed Hydra commands. For example, by executing on terminal: `uv run wizard_ops train model.backbone=resnet50 train.max_epochs=20 train.fast_dev_run=false`
-
-would kick off a full training run and produce checkpoints and logs on W&B's. 
+We used Hydra config files `(configs/config.yaml)` to define all our data, model, and training hyperparameters. To run an experiment, use the package’s CLI and pass needed Hydra commands. For example, by executing on terminal: `uv run wizard_ops train model.backbone=resnet50 train.max_epochs=20 train.fast_dev_run=false` would kick off a full training run and produce checkpoints and logs on W&B's.
 
 ### Question 13
 
@@ -414,7 +412,7 @@ would kick off a full training run and produce checkpoints and logs on W&B's.
 >
 > Answer:
 
-TODO: @Ari
+We set this mainly by using a fixed seed setted via `lightning.seed_everything()` function. Additionally, it was made sure that the workers seeds for the dataset loaders are also set properly. Furthermore, In addition, the W&B is keeping track of all the parameters and one can reproduce the same experiment by either pulling the configs from W&B or just sharing a config file.
 
 ### Question 14
 
@@ -431,7 +429,8 @@ TODO: @Ari
 >
 > Answer:
 
-TODO: @Ari
+<img src="figures/wandb.png" alt="W&B Experiments" width="40%"/>
+We are tracking the MSE loss along with logging some validation set's samples to compare the predictions with GT.
 
 ### Question 15
 
@@ -446,7 +445,33 @@ TODO: @Ari
 >
 > Answer:
 
+<<<<<<< Updated upstream
 We containerized training process, as well as both backend and frontend; these Dockerfiles live in `dockerfiles/api.dockerfile` and `dockerfiles/frontend.dockerfile`. For CI/CD we build images using Google Cloud Build and push them to Artifact Registry, then deploy to Cloud Run, and integrate it with our cloud triggers. For example, for building and pushing a docker image of our train Dockerfile to Artifact Registry, you could run a command: `gcloud builds submit --project="$PROJECT" --config=cloudbuild-train.yaml  .`
+=======
+We did mainly two experiments with containers. One idea was to make docker image for every aspect of this project, that is an image for backend, an image for frontend and an image for training. As it was mentioned making containers with the training directly caused many issues with DVC. Another way we tried was to only make an image of our project. Since our project is an executable is some way (one can run `uv run wizard_ops --help` or `wizard_ops --help`) this made it easier make an entry point or CMD in dockerfiles to just execute what is needed.
+
+A sample of dockerfile can be seen in the `dockerfiles` and considering the `train.dockerfile` one would run:
+
+```bash
+docker build -f dockerfiles/train.dockerfile -t nutrition-train .
+```
+
+and then run with:
+
+```bash
+docker run \
+  -e WANDB_API_KEY=your_wandb_key \
+  -e EXPERIMENT_NAME=local_experiment \
+  -e BACKBONE=resnet18 \
+  -e MAX_EPOCHS=10 \
+  -e BATCH_SIZE=32 \
+  -e EXTRA_HYDRA_ARGS="train.learning_rate=0.001" \
+  -v /path/to/gcp-credentials.json:/app/credentials.json \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json \
+  nutrition-train
+```
+
+> > > > > > > Stashed changes
 
 ### Question 16
 
@@ -461,7 +486,12 @@ We containerized training process, as well as both backend and frontend; these D
 >
 > Answer:
 
+<<<<<<< Updated upstream
 When running experiments, or any kind of code testing, each of us used various kinds of debugging. For training the model, at the start we used print statements to inspect shapes and values of the passed data, go through the error messages to identify where the issues appear in the code, and then would escalate to using VSCode's debugger. We later moved on to using logger from `loguru` to capture log messages, first locally, and them move on GCP. We did not profile the code during the project — not because it was perfect, but due to time constraints and higher-priority integration, deployment and frontend work.
+=======
+Debugging the experiments varied across the members, but mainly the use of agents helped a lot in figuring out what was wrong. As part of this project there was not enough time in our team to perform profiling.
+
+> > > > > > > Stashed changes
 
 ## Working in the cloud
 
@@ -585,9 +615,14 @@ be seen with a Ref as we finalized the setup.
 >
 > Answer:
 
+<<<<<<< Updated upstream
 TODO: @Ari, please review.
 
-We first developed and ran training locally using the package CLI (e.g., `uv run wizard_ops train`) to iterate quickly. To scale and reproduce runs in the cloud we containerized the trainer (`dockerfiles/train.dockerfile`) and added a small entrypoint (`dockerfiles/train_entrypoint.sh`) that pulls data with DVC and launches the Hydra-configured training job. We chose Vertex AI to build the image, push it to Artifact Registry, and call `gcloud ai custom-jobs create` with the image and environment overrides so Vertex runs the same containerized entrypoint at scale. We selected Vertex AI for training our model on Cloud as it is a general-use ML platform, where we would not need to focus too much on infrastructure setup. 
+# We first developed and ran training locally using the package CLI (e.g., `uv run wizard_ops train`) to iterate quickly. To scale and reproduce runs in the cloud we containerized the trainer (`dockerfiles/train.dockerfile`) and added a small entrypoint (`dockerfiles/train_entrypoint.sh`) that pulls data with DVC and launches the Hydra-configured training job. We chose Vertex AI to build the image, push it to Artifact Registry, and call `gcloud ai custom-jobs create` with the image and environment overrides so Vertex runs the same containerized entrypoint at scale. We selected Vertex AI for training our model on Cloud as it is a general-use ML platform, where we would not need to focus too much on infrastructure setup.
+
+We tried to implement the training pipeline in the vertex ai, but it was not successful due to DVC and the fact that the logging view for it and cloud builds taking very long time. Additionally, there was not a proper guide on how to deploy trainings to the vertex ai via cloud build. So instead we used DTU's HPC to perform training and everything went smoothly as we just cloned the repository and run dvc pull and then the train command.
+
+> > > > > > > Stashed changes
 
 ## Deployment
 
@@ -671,7 +706,6 @@ For load testing, we used locust. We defined a custom load shape using the LoadT
 
 We see that the response times generally are high (with 95% quantile easier to visualize in seconds than milliseconds), with a max response time of over 2 minutes. Furthermore, 3/4 of the requests fail: 735 of 1021. There is a good reason for this: The scaling of the cloud run service was set to 1 instance to prevent uncontrollable billing.
 
-
 ### Question 26
 
 > **Did you manage to implement monitoring of your deployed model? If yes, explain how it works. If not, explain how**
@@ -704,7 +738,7 @@ We see that the response times generally are high (with 95% quantile easier to v
 >
 > Answer:
 
-Student johco (s223190) used 0 credits. Student s253471 used 17.17 USD during project development, where the service Cloud Run was the most expensive (12.31 USD) due to repeated Docker image builds to Cloud. 
+Student johco (s223190) used 0 credits. Student s253471 used 17.17 USD during project development, where the service Cloud Run was the most expensive (12.31 USD) due to repeated Docker image builds to Cloud.
 For us, working in the cloud was often frustrating due to setup or integration challenges, but its scalability and provided services made this experience great.
 
 --- question 27 fill here ---
@@ -758,7 +792,7 @@ TODO: @Ari
 
 TODO: @all
 
-One of the biggest challenges was connecting our Docker images with GCP (Cloud Run / Artifact Registry / Cloud Build). We faced local packaging (presence/absence of uv.lock), authentication and region/repository mismatch issues. We resolved these issues by moving builds for each Docker image into separate cloudbuild.yaml files, and moved secrets to GCP's secret manager. 
+One of the biggest challenges was connecting our Docker images with GCP (Cloud Run / Artifact Registry / Cloud Build). We faced local packaging (presence/absence of uv.lock), authentication and region/repository mismatch issues. We resolved these issues by moving builds for each Docker image into separate cloudbuild.yaml files, and moved secrets to GCP's secret manager. Additionally, the DVC was a huge problem in almost all steps. We have even Moreover, there was the issue of everyone working on the GCP and sometimes some people were working on the same topic without knowing.
 
 ### Question 31
 
@@ -778,12 +812,15 @@ One of the biggest challenges was connecting our Docker images with GCP (Cloud R
 
 TODO: @all
 
-Student s253471 contributed to project infrastructure, building the inference/evaluation pipeline, strengthening tests, improving model-training workflows, updating documentation and packaging, and adding Docker upgrades for the training environment.
-Student johco (s223190) contributed to the training and evaluation codebase, implemented API testing, and conducted load testing to assess performance.
-
+- Student s253471 contributed to project infrastructure, building the inference/evaluation pipeline, strengthening tests, improving model-training workflows, updating documentation and packaging, and adding Docker upgrades for the training environment.
+- Student johco (s223190) contributed to the training and evaluation codebase, implemented API testing, and conducted load testing to assess performance.
+- Student alihaj (s242522) implemented the model development, dataset development, setup experiments tracking and monitoring, train the model, and setup project as a CLI
+- All members contributed to the codes and aspects of the project
+- Variety of AI agent models via vscode's chat was used for debugging
 
 ---
 
+<!--
 ## run locally
 
 ### backend
@@ -826,4 +863,4 @@ docker build -t acherrydev/wizard_ops_fe -f dockerfiles/frontend.dockerfile . \
 
 ```bash
 docker push acherrydev/wizard_ops_fe
-```
+``` -->
