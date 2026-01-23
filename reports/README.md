@@ -174,8 +174,7 @@ s253471, s253033, s253081, johco (s223190), alihaj (s242522)
 >
 > Answer:
 
-The library we've used in our project is Albumations
-(https://pypi.org/project/albumentations/). It is a library commonly used in Computer Vision applications to derive new samples for training higher quality models. We used it to apply transformations to our input images such as resizing and normalizing. We utilized Albuminations over the course's used torchvision or cv2 libraries, as this library's pipelines provide a unified interface that simultaneously transforms images and their associated metadata (in our case, dish images and the ground truth metadata about their nutritional value).
+The library we've used in our project is Albumentations (https://pypi.org/project/albumentations/). It is a library commonly used in Computer Vision applications to derive new samples for training higher quality models. We used it to apply transformations to our input images such as resizing and normalizing. We utilised Albumentations over the course's used torchvision or cv2 libraries, as this library's pipelines provide a unified interface that simultaneously transforms images and their associated metadata (in our case, dish images and the ground truth metadata about their nutritional value). Albumentations also has a robust APIs for other tasks for example it can handle segmentation task augmentations for example if one wanted to crop a random part of the image Albumentations will crop the same part for the segmentations as well.
 
 ## Coding environment
 
@@ -197,7 +196,7 @@ The library we've used in our project is Albumations
 
 We used `uv` for managing our dependencies. We structured the project as a
 workspace in the root `pyproject.toml`, with the two sub-projects `frontend` and
-`backend` (under the `src/` folder) each having their own `pyproject.toml`).
+`backend` (under the `src/` folder) each having their own `pyproject.toml`.
 
 To get a complete copy of the development environment, it is sufficient to run
 
@@ -207,7 +206,7 @@ uv sync --all-packages
 
 in the root of the repository.
 
-We chose to omit the `uv.lock` file from being permanently stored in the root directory, as it forces the environment to resolve dependencies dynamically, which ensures the project stays synchronized with the latest updates and prevents dependency issues.
+We chose to omit the `uv.lock` file from being permanently stored in the root directory, as it forces the environment to resolve dependencies dynamically, which ensures the project stays synchronized with the latest updates and prevents dependency issues. The `uv.lock` often causes issues with reproducing same environment which is the main reason it was ignored.
 
 ### Question 5
 
@@ -342,7 +341,7 @@ potentially help them in their own tasks.
 >
 > Answer:
 
-Yes we used DVC with Google buckets. As we started using this we came to a conclusion that DVC is very good to do developments locally or share the projects between other members, but it is definitely not a solution for automated production pipelines. This comes from our experiments with setting up cloud builds as trying to automate the training phase however DVC has many compatibility issues when it comes to containerising.
+Yes we used DVC with Google buckets. As we started using this we came to a conclusion that DVC is very good to do developments locally or share the projects between other members, but it is definitely not a solution for automated production pipelines. This comes from our experiments with setting up cloud builds as trying to automate the training phase however DVC has many compatibility issues when it comes to docker containers. Additionally, DVC is very limited in terms of performance as it struggled a lot when dealing with a dataset with large dataset that are in forms of many small files.
 
 ### Question 11
 
@@ -411,7 +410,13 @@ We used Hydra config files `(configs/config.yaml)` to define all our data, model
 >
 > Answer:
 
-We set this mainly by using a fixed seed setted via `lightning.seed_everything()` function. Additionally, it was made sure that the workers seeds for the dataset loaders are also set properly. Furthermore, In addition, the W&B is keeping track of all the parameters and one can reproduce the same experiment by either pulling the configs from W&B or just sharing a config file.
+We set this mainly by using a fixed seed setted via `lightning.seed_everything()` function. Additionally, it was made sure that the workers seeds for the dataset loaders are also set properly. Furthermore, In addition, the W&B is keeping track of all the parameters and one can reproduce the same experiment by either pulling the configs from W&B or just sharing a config file. In addition, the dataset settings are also set in the config file and not forget that hydra automatically generates outputs experiments with each experiment's parameters. One also could in future to set some parameters in the `lightning.Trainer()`. It is also good to set the following torch values:
+
+```python
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+torch.use_deterministic_algorithms(True)
+```
 
 ### Question 14
 
@@ -428,8 +433,8 @@ We set this mainly by using a fixed seed setted via `lightning.seed_everything()
 >
 > Answer:
 
-<img src="figures/wandb.png" alt="W&B Experiments" width="40%"/>
-We are tracking the MSE loss along with logging some validation set's samples to compare the predictions with GT.
+![W&B Experiments](figures/wandb.png)
+We are tracking the MSE loss along with logging some validation set's samples to compare the predictions with GT. In the W&B screenshot logging it can be observed that the for different experiment settings there the model's training loss is changing. Additionally, we are keeping track of a validation loss which is happening during the validation runs on a `val_dataset` split. During the validation we are logging few image samples to compare the model's predictions with the GT for better experiment tracking. The `train/loss_epoch` and `val/loss` is being logged to keep track of experiment's outcome. By using these plots one can understand if the model if overfitting, underfitting or learning good. It can be see also from the `train/loss_epoch` if the model is collapsing or not and not learning anything. Sometimes this could indicate that the model is either too complex for the dataset or the dataset is too complex for the model.
 
 ### Question 15
 
@@ -528,7 +533,7 @@ We did not use the **Compute Engine** in our project as we did not need a full
 VM for our use case. Instead, we opted for **Cloud Run** to deploy our
 application, which allows us to simply select a Docker image to deploy (or other
 formats of services supported), and GCP manages the underlying compute
-resources for us.
+resources for us. Although not to forget to mention that the Compute engine costs are usually higher and most often the amount of resources chosen in the engine are under-used or over-used.
 
 ### Question 19
 
@@ -537,10 +542,8 @@ resources for us.
 >
 > Answer:
 
-<p align="center">
-    <img src="figures/wizards_buckets.png" alt="GCP Buckets" width="40%"/>
-    <img src="figures/wizards_buckets_kfc.png" alt="GCP Bucket dtu-kfc-bucket" width="40%"/>
-</p>
+![GCP Buckets](figures/wizards_buckets.png)
+![GCP Bucket dtu-kfc-bucket](figures/wizards_buckets_kfc.png)
 
 We have four buckets in total, three of them were generated by other GCP
 services automatically:
@@ -563,10 +566,8 @@ In the images, we show the list of buckets, and the contents of the
 >
 > Answer:
 
-<p align="center">
-    <img src="figures/wizards_artifact_registry.png" alt="GCP Artifact Registry gcr.io" width="40%"/>
-    <img src="figures/wizards_artifact_registry_2.png" alt="GCP Artifact Registry container-registry" width="40%"/>
-</p>
+![GCP Artifact Registry gcr.io](figures/wizards_artifact_registry.png)
+![GCP Artifact Registry container-registry](figures/wizards_artifact_registry_2.png)
 
 We have two registries, the `gcr.io` one we used to store our Docker images for
 frontend and backend (Cloud Run deployments), and the `container-registry` one
@@ -579,10 +580,7 @@ was used for a testing image and is being used for the training image.
 >
 > Answer:
 
-<p align="center">
-    <img src="figures/wizards_build_history.png" alt="GCP Cloud Build History" width="60%"/>
-</p>
-
+![GCP Cloud Build History](figures/wizards_build_history.png)
 We have a lot of builds without a Ref. Those are manual builds we triggered
 while experimenting and developing the whole setup. The latest two builds can
 be seen with a Ref as we finalized the setup.
@@ -697,6 +695,8 @@ We see that the response times generally are high (with 95% quantile easier to v
 >
 > Answer:
 
+We did not implement monitoring of the deployed model as there was not enough time. However, monitoring the deployed model can show sometimes unexpected factors engaging with the deployment of the model and resulting in errors in the output and computations. One example of this is the OpenAI's GPT deployment in which they noticed the model performance dropped heavily after a while which was due to GPU hardware malfunctioning and degrading over time.
+
 ## Overall discussion of project
 
 > In the following section we would like you to think about the general structure of your project.
@@ -750,7 +750,7 @@ form to upload an image and returns the predicted nutritional values beside it.
 >
 > Answer:
 
-<img src="figures/overview.png" alt="Overview" width="40%"/>
+![Overview](figures/overview.png)
 
 The starting point is the developer, where they develop and implement the project as a cli package `wizard_ops --help`. The developer first defines experiment settings and then uses the CLI to perform model training. During the training some attributes along with the current experiment configs are logged and tracked in the W&B. Then after training the user syncs the checkpoints to the bucket via DVC. The CLI can also be used to perform download of the data which uses dvc to pull from bucket. After changes to the Github few actions are triggered to make sure tests pass and the linting are correct. The changes to backend and frontend trigger a cloud build resulting in the GCP generating a link that users can access to view.
 
@@ -789,50 +789,3 @@ One of the biggest challenges was connecting our Docker images with GCP (Cloud R
 - Student alihaj (s242522) implemented the model development, dataset development, setup experiments tracking and monitoring, train the model, and setup project as a CLI
 - All members contributed to the codes and aspects of the project
 - Variety of AI agent models via vscode's chat was used for debugging
-
----
-
-<!--
-## run locally
-
-### backend
-
-```bash
-uv run uvicorn wizard_ops.api:app \
-  --reload \
-  --host 0.0.0.0 \
-  --port 8000
-```
-
-### frontend
-
-```bash
-uv run streamlit run src/wizard_ops/frontend/frontend.py
-```
-
-## docker
-
-### backend
-
-```bash
-docker build -t backend -f dockerfiles/api.dockerfile .
-```
-
-### frontend
-
-```bash
-docker build -t acherrydev/wizard_ops_fe -f dockerfiles/frontend.dockerfile .
-```
-
-#### build and run
-
-```bash
-docker build -t acherrydev/wizard_ops_fe -f dockerfiles/frontend.dockerfile . \
-&& docker run --rm -p 8001:8001 -e "PORT=8001" acherrydev/wizard_ops_fe
-```
-
-#### publish
-
-```bash
-docker push acherrydev/wizard_ops_fe
-``` -->
