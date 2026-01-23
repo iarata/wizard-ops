@@ -5,8 +5,8 @@ from typing import Optional
 import lightning as L
 import torch
 import torch.nn as nn
-
 import wandb
+
 from wizard_ops.utils import build_img_encoder
 
 

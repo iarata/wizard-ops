@@ -7,8 +7,8 @@ from pathlib import Path
 
 import torch
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from google.cloud import storage
 from PIL import Image
 
