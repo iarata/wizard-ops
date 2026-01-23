@@ -121,7 +121,7 @@ will check the repositories and the code to verify your answers.
 - [x] Deploy your model in GCP using either Functions or Run as the backend (M23)
 - [x] Write API tests for your application and set up continuous integration for these (M24)
 - [x] Load test your application (M24)
-- [ ] Create a more specialized ML-deployment API using either ONNX or BentoML, or both (M25)
+- [x] Create a more specialized ML-deployment API using either ONNX or BentoML, or both (M25)
 - [x] Create a frontend for your API (M26)
 
 ### Week 3
@@ -129,8 +129,8 @@ will check the repositories and the code to verify your answers.
 - [ ] Check how robust your model is towards data drifting (M27)
 - [ ] Deploy to the cloud a drift detection API (M27)
 - [ ] Instrument your API with a couple of system metrics (M28)
-- [ ] Setup cloud monitoring of your instrumented application (M28)
-- [ ] Create one or more alert systems in GCP to alert you if your app is not behaving correctly (M28)
+- [x] Setup cloud monitoring of your instrumented application (M28)
+- [x] Create one or more alert systems in GCP to alert you if your app is not behaving correctly (M28)
 - [x] If applicable, optimize the performance of your data loading using distributed data loading (M29)
 - [x] If applicable, optimize the performance of your training pipeline by using distributed training (M30)
 - [ ] Play around with quantization, compilation and pruning for you trained models to increase inference speed (M31)
@@ -397,8 +397,6 @@ The testing workflow file is available here https://github.com/iarata/wizard-ops
 >
 > Answer:
 
-TODO: @Ari, please review.
-
 We used Hydra config files `(configs/config.yaml)` to define all our data, model, and training hyperparameters. To run an experiment, use the package’s CLI and pass needed Hydra commands. For example, by executing on terminal: `uv run wizard_ops train model.backbone=resnet50 train.max_epochs=20 train.fast_dev_run=false`
 
 would kick off a full training run and produce checkpoints and logs on W&B's. 
@@ -448,7 +446,7 @@ TODO: @Ari
 >
 > Answer:
 
---- question 15 fill here ---
+We containerized training process, as well as both backend and frontend; these Dockerfiles live in `dockerfiles/api.dockerfile` and `dockerfiles/frontend.dockerfile`. For CI/CD we build images using Google Cloud Build and push them to Artifact Registry, then deploy to Cloud Run, and integrate it with our cloud triggers. For example, for building and pushing a docker image of our train Dockerfile to Artifact Registry, you could run a command: `gcloud builds submit --project="$PROJECT" --config=cloudbuild-train.yaml  .`
 
 ### Question 16
 
@@ -463,7 +461,7 @@ TODO: @Ari
 >
 > Answer:
 
---- question 16 fill here ---
+When running experiments, or any kind of code testing, each of us used various kinds of debugging. For training the model, at the start we used print statements to inspect shapes and values of the passed data, go through the error messages to identify where the issues appear in the code, and then would escalate to using VSCode's debugger. We later moved on to using logger from `loguru` to capture log messages, first locally, and them move on GCP. We did not profile the code during the project — not because it was perfect, but due to time constraints and higher-priority integration, deployment and frontend work.
 
 ## Working in the cloud
 
@@ -587,7 +585,9 @@ be seen with a Ref as we finalized the setup.
 >
 > Answer:
 
-TODO: @Ari
+TODO: @Ari, please review.
+
+We first developed and ran training locally using the package CLI (e.g., `uv run wizard_ops train`) to iterate quickly. To scale and reproduce runs in the cloud we containerized the trainer (`dockerfiles/train.dockerfile`) and added a small entrypoint (`dockerfiles/train_entrypoint.sh`) that pulls data with DVC and launches the Hydra-configured training job. We chose Vertex AI to build the image, push it to Artifact Registry, and call `gcloud ai custom-jobs create` with the image and environment overrides so Vertex runs the same containerized entrypoint at scale. We selected Vertex AI for training our model on Cloud as it is a general-use ML platform, where we would not need to focus too much on infrastructure setup. 
 
 ## Deployment
 
@@ -704,7 +704,8 @@ We see that the response times generally are high (with 95% quantile easier to v
 >
 > Answer:
 
-johco (s223190) used 0 credits. (?)
+Student johco (s223190) used 0 credits. Student s253471 used 17.17 USD during project development, where the service Cloud Run was the most expensive (12.31 USD) due to repeated Docker image builds to Cloud. 
+For us, working in the cloud was often frustrating due to setup or integration challenges, but its scalability and provided services made this experience great.
 
 --- question 27 fill here ---
 
