@@ -776,7 +776,9 @@ form to upload an image and returns the predicted nutritional values beside it.
 >
 > Answer:
 
-TODO: @Ari
+<img src="figures/overview.png" alt="Overview" width="40%"/>
+
+The starting point is the developer, where they develop and implement the project as a cli package `wizard_ops --help`. The developer first defines experiment settings and then uses the CLI to perform model training. During the training some attributes along with the current experiment configs are logged and tracked in the W&B. Then after training the user syncs the checkpoints to the bucket via DVC. The CLI can also be used to perform download of the data which uses dvc to pull from bucket. After changes to the Github few actions are triggered to make sure tests pass and the linting are correct. The changes to backend and frontend trigger a cloud build resulting in the GCP generating a link that users can access to view.
 
 ### Question 30
 
