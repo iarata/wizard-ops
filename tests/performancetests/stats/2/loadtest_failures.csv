@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences
+POST,/analyze,RemoteDisconnected('Remote end closed connection without response'),1
+GET,/,HTTPError('429 Client Error: Too Many Requests for url: /'),408
+POST,/analyze,HTTPError('429 Client Error: Too Many Requests for url: /analyze'),4013

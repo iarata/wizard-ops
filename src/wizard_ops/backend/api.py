@@ -7,11 +7,10 @@ from pathlib import Path
 
 import torch
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
-
+from fastapi.responses import JSONResponse
 from google.cloud import storage
+from PIL import Image
 
 from wizard_ops.evaluate import load_model_for_inference, predict_nutrition
 
