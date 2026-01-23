@@ -640,13 +640,8 @@ We used pytest, the fastapi Testclient for the unittesting, following the exerci
 
 For load testing, we used locust. We defined a custom load shape using the LoadTestShape class in order tp simulate a gradually increasing load, followed by a sudden peak. This also allowed us to implement a warm-up phase which we discard when computing statistics from the load test.
 
-<p align="center">
-    <img src="figures/load_test_user_count.png" alt="The custom shaped load test." width="30%"/>
-</p>
-
-<p align="center">
-    <img src="figures/load_test_reponse times.png" alt="50, 95 and 99‰ quantiles of response time." width="30%"/>
-</p>
+![The custom shaped load test](reports/figures/loadtest_user_count.png)
+![50, 95 and 99‰ quantiles of response time](reports/figures/loadtest_response_times.png)
 
 We see that the response times generally are high (with 95% quantile easier to visualize in seconds than milliseconds), with a max response time of over 2 minutes. Furthermore, 3/4 of the requests fail: 735 of 1021. There is a good reason for this: The scaling of the cloud run service was set to 1 instance to prevent uncontrollable billing.
 
